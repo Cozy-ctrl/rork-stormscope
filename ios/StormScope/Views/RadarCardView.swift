@@ -20,6 +20,7 @@ struct RadarCardView: View {
     @State private var isPlaying = false
     @State private var selectedAlert: NWSAlertFeature?
     @State private var isRadarLoading = false
+    @State private var recenterToken = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -94,6 +95,22 @@ struct RadarCardView: View {
                     .clipShape(Capsule())
             }
         }
+    }
+
+    private var recenterMapButton: some View {
+        Button {
+            recenterToken += 1
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.cyan)
+                .frame(width: 32, height: 32)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .environment(\.colorScheme, .dark)
+        .accessibilityLabel("Re-center radar map on your location")
     }
 
     private var headerIcon: String {
@@ -211,6 +228,7 @@ struct RadarCardView: View {
                         layerMode: layerMode,
                         velocitySiteID: radarStatus?.id,
                         alerts: alerts,
+                        recenterToken: recenterToken,
                         onSelectAlert: { alert in
                             selectedAlert = alert
                         },
@@ -226,6 +244,11 @@ struct RadarCardView: View {
                         loadingIndicator
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
+
+                    // Re-center button — resets the map to user's location.
+                    recenterMapButton
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(8)
                 }
             }
             .clipShape(.rect(cornerRadius: 14))

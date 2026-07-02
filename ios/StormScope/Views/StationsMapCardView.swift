@@ -221,6 +221,10 @@ struct StationsMapCardView: View {
                 }
             }
             .clipShape(.rect(cornerRadius: 14))
+            .overlay(alignment: .topTrailing) {
+                recenterButton
+                    .padding(8)
+            }
             .onChange(of: stations.map(\.id)) { _, _ in
                 recenter()
                 // Drop a stale selection if the station list changed.
@@ -231,6 +235,22 @@ struct StationsMapCardView: View {
             .onChange(of: deviceLatitude) { _, _ in
                 recenter()
             }
+    }
+
+    private var recenterButton: some View {
+        Button {
+            recenter()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.cyan)
+                .frame(width: 32, height: 32)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .environment(\.colorScheme, .dark)
+        .accessibilityLabel("Re-center map on your location and stations")
     }
 
     /// Fits the camera around the device and all station coordinates.

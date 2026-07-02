@@ -64,6 +64,7 @@ struct RadarMapRepresentable: UIViewRepresentable {
     /// Nearest NEXRAD site identifier (e.g. "TLX") for single-site velocity tiles.
     let velocitySiteID: String?
     let alerts: [NWSAlertFeature]
+    let recenterToken: Int
     let onSelectAlert: (NWSAlertFeature) -> Void
     /// Called when tile fetching starts for a new frame (true) and when the
     /// stale overlays are cleaned up after a settling delay (false).
@@ -100,7 +101,7 @@ struct RadarMapRepresentable: UIViewRepresentable {
         context.coordinator.syncVelocity(on: mapView, mode: layerMode, siteID: velocitySiteID)
         context.coordinator.syncRadarFrame(on: mapView, suffix: frameSuffix, mode: layerMode)
         context.coordinator.syncPolygons(on: mapView, alerts: alerts)
-        context.coordinator.recenterIfNeeded(on: mapView, center: center)
+        context.coordinator.recenterIfNeeded(on: mapView, center: center, token: recenterToken)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -108,6 +109,7 @@ struct RadarMapRepresentable: UIViewRepresentable {
         private var currentSuffix: String?
         private var currentAlertIDs: Set<String> = []
         private var lastCenterKey: String?
+        private var lastRecenterToken: Int?
         /// Pending delayed removal of the previous radar tile overlay so the
         /// new frame has time to fetch tiles before the old one disappears.
         private var pendingStaleRemoval: DispatchWorkItem?
@@ -205,17 +207,19 @@ struct RadarMapRepresentable: UIViewRepresentable {
             }
         }
 
-        func recenterIfNeeded(on mapView: MKMapView, center: CLLocationCoordinate2D) {
+        func recenterIfNeeded(on mapView: MKMapView, center: CLLocationCoordinate2D, token: Int) {
+            let force = lastRecenterToken != nil && token != lastRecenterToken
             let key = String(format: "%.2f,%.2f", center.latitude, center.longitude)
-            guard key != lastCenterKey else { return }
-            let isFirst = lastCenterKey == nil
+            let moved = key != lastCenterKey
+            guard force || moved else { return }
+            lastRecenterToken = token
             lastCenterKey = key
             let region = MKCoordinateRegion(
                 center: center,
                 latitudinalMeters: 300_000,
                 longitudinalMeters: 300_000
             )
-            mapView.setRegion(region, animated: !isFirst)
+            mapView.setRegion(region, animated: true)
         }
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
