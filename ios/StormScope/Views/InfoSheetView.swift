@@ -38,6 +38,7 @@ struct InfoSheetView: View {
                     stationsSection
                     stationsMapSection
                     stationObservedSection
+                    deviceDeltaSection
 
                     // MARK: Intelligence Layer
                     eventConfirmationSection
@@ -515,7 +516,7 @@ struct InfoSheetView: View {
             title: "Station Map & Comparison Charts",
             tint: Theme.cyan
         ) {
-            Text("The Station Map places every NWS observation site around you on a satellite map. Pin colour shows pressure agreement with your device (green = close, orange/red = a gradient is present). Switch to the Dew Point view to see moisture distribution — a sharp dry-to-moist boundary between nearby stations is a dryline, a classic storm-initiation trigger.")
+            Text("The Station Map places every NWS observation site around you on a satellite map. Pin colour shows pressure agreement with your device (green = close, orange/red = a gradient is present). Tapping a pin reveals that station\u{2019}s full observation in a floating detail card. When multiple stations are visible, connection lines trace the pressure gradient across the map \u{2014} coloured from green (agreement) to red (divergence) so you can see spatial pressure structure at a glance. Switch to the Dew Point view to see moisture distribution \u{2014} a sharp dry-to-moist boundary between nearby stations is a dryline, a classic storm-initiation trigger.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -524,6 +525,47 @@ struct InfoSheetView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("The pressure chart includes a dashed \u{201C}You\u{201D} rule so you can spot your sensor against every station at once. Both the map and station list collapse by default — the map always starts closed regardless of previous session state, keeping pins visible when you first open the app.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Device vs station divergence
+
+    private var deviceDeltaSection: some View {
+        section(
+            icon: "plusminus.circle.fill",
+            title: "You vs Stations — Divergence Chart & Pressure Gradient",
+            tint: Theme.cyan
+        ) {
+            Text("The \u{201C}You vs Stations\u{201D} card sits below the station comparison chart and answers a single question with real data: does your barometer agree with the official network? A diverging bar chart is centred on your sensor at zero \u{2014} each nearby NWS station is a signed bar showing exactly how far above or below you it reads. The bars use the same green/amber/orange agreement scale as the station map pins.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("The card interprets the pattern, not just the numbers:")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.top, 4)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("VERIFIED \u{2014} all stations within \u{00B1}1.5 hPa of your sensor. Your barometer is confirmed against the official network.")
+                bullet("DRIFTING \u{2014} all stations read consistently higher (or lower) than you. This usually means altitude or sensor offset, not weather \u{2014} the card nudges you to calibrate in Settings.")
+                bullet("DIVERGENT \u{2014} stations disagree with your sensor in different directions. A real pressure gradient is crossing the area.")
+            }
+
+            Text("Pressure Gradient Arrow")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.top, 4)
+
+            Text("The card computes the horizontal pressure slope \u{2014} an inverse-distance-weighted vector sum of pressure differences between your device and all reporting stations. When the gradient exceeds 0.8 hPa per 100 km, a compass arrow appears in the card showing which direction pressure is falling toward, because weather systems generally approach from the falling side. This is the same physics meteorologists use to draw isobars on a surface map \u{2014} the tighter the gradient, the stronger the wind and the more organised the system.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Both the divergence chart and gradient arrow are purely spatial \u{2014} they compare your pressure to stations at one moment in time, unlike tendency cards which measure change over hours. Together they tell you whether a feature is near you (spatial) or moving toward you (temporal).")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -584,7 +626,7 @@ struct InfoSheetView: View {
             title: "On-Device AI Insight",
             tint: Theme.cyan
         ) {
-            Text("On iOS 26 devices with Apple Intelligence, the on-device Foundation Model reads your live sensor data and produces a plain-language briefing. It receives current pressure, trend, tornado signature status, active NWS alerts, weather conditions, CAPE, Lifted Index, lightning strike counts, event confirmation status, and the SPC Day 1 outlook.")
+            Text("On iOS 26 devices with Apple Intelligence, the on-device Foundation Model reads your live sensor data and produces a plain-language briefing. It receives current pressure, trend, tornado signature status, active NWS alerts, weather conditions, CAPE, Lifted Index, lightning strike counts, event confirmation status, rainbow wrap indicator status, the \u{201C}You vs Stations\u{201D} divergence verdict, the pressure gradient arrow direction and strength, and the SPC Day 1 outlook.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
