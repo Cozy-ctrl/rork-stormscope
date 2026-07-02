@@ -31,6 +31,13 @@ nonisolated struct PressureGradient {
     /// Inverse-distance-weighted vector sum of pressure slopes from the device
     /// toward each reporting station. Returns nil when fewer than two stations
     /// report pressure or the field is essentially flat.
+    ///
+    /// The device pressure is bias-corrected first: any uniform offset between
+    /// the sensor and the station network (altitude or calibration drift) is
+    /// removed by shifting the device value by the mean station delta. This
+    /// keeps a drifting sensor from fabricating a radial "gradient" that
+    /// contradicts the divergence chart's own drift verdict — only genuine
+    /// spatial variation across stations survives.
     static func compute(
         stations: [StationObservation],
         deviceLatitude: Double,
@@ -39,6 +46,10 @@ nonisolated struct PressureGradient {
     ) -> PressureGradient? {
         let usable = stations.filter { $0.pressureHPa != nil }
         guard usable.count >= 2 else { return nil }
+
+        let deltas = usable.compactMap { $0.pressureHPa.map { $0 - devicePressure } }
+        let meanDelta = deltas.reduce(0, +) / Double(deltas.count)
+        let correctedDevice = devicePressure + meanDelta
 
         var vectorEast = 0.0
         var vectorNorth = 0.0
@@ -50,7 +61,7 @@ nonisolated struct PressureGradient {
             let eastKm = (station.longitude - deviceLongitude) * 111.320 * cos(deviceLatitude * .pi / 180)
             let distanceKm = max((northKm * northKm + eastKm * eastKm).squareRoot(), 0.5)
             // Positive slope means pressure falls in the direction of this station.
-            let slope = (devicePressure - stationPressure) / distanceKm
+            let slope = (correctedDevice - stationPressure) / distanceKm
             let weight = 1.0 / distanceKm
             vectorEast += (eastKm / distanceKm) * slope * weight
             vectorNorth += (northKm / distanceKm) * slope * weight

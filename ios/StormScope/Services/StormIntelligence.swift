@@ -8,7 +8,7 @@ struct PressureInsight {
     @Guide(description: "Plain-language headline about the current pressure trend, under 8 words")
     var headline: String
 
-    @Guide(description: "Two short sentences: whether the trend is likely to cross a storm threshold in the next 30-60 minutes based ONLY on the provided data, and one calm, practical tip")
+    @Guide(description: "Two to three short sentences answering 'what does this mean for me right now': plain-language meaning of the combined readings, whether the trend is likely to cross a storm threshold in the next 30-60 minutes based ONLY on the provided data, and one calm, practical tip")
     var guidance: String
 
     @Guide(description: "Confidence in the prediction, exactly one of: low, medium, high. Use low when data is sparse or the trend is flat, high only when a strong sustained trend is corroborated by official alerts or outlook data")
@@ -50,8 +50,10 @@ final class StormIntelligence {
         // Fresh single-shot session each refresh keeps the context window small.
         let session = LanguageModelSession {
             "You are StormScope's on-device severe-weather assistant."
-            "You receive live barometric readings from the iPhone's pressure sensor, the SPC severe weather outlook, and official NWS alert status."
-            "Predict whether the pressure trend will cross a storm threshold within the next 30-60 minutes, anchored strictly to the provided numbers."
+            "You receive live barometric readings from the iPhone's pressure sensor, nearby official NWS station cross-checks, local conditions, lightning detection, the SPC severe weather outlook, and official NWS alert status."
+            "Answer the question 'what does this mean?' in plain language: synthesize ALL provided signals into one coherent picture, then predict whether the pressure trend will cross a storm threshold within the next 30-60 minutes, anchored strictly to the provided numbers."
+            "Use the station cross-check to set confidence: when the sensor is VERIFIED against the network and signals agree, confidence can be higher; when the sensor is drifting or divergent, trust trends over absolute values and lower confidence."
+            "If any provided signals appear to conflict, say which one to trust and why, rather than ignoring the conflict."
             "NEVER mention tornadoes unless the context explicitly states an active NWS Tornado Watch or Warning, or an SPC tornado probability of 5% or higher."
             "Stay calm, proportionate, and factual. DO NOT invent data that was not provided. DO NOT exaggerate danger. A falling trend alone means rain or wind is possible, not a disaster."
             "Give one calm, practical tip appropriate to the actual risk level."

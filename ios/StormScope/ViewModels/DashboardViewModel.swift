@@ -140,6 +140,30 @@ final class DashboardViewModel {
         return device - modelMSLP
     }
 
+    /// Shared pressure-gradient vector (bias-corrected in the model) used by
+    /// the divergence card, station map, and AI context so they never disagree.
+    var pressureGradient: PressureGradient? {
+        guard let lat = location.latitude,
+              let lon = location.longitude,
+              let device = displayPressure else { return nil }
+        return PressureGradient.compute(
+            stations: stations,
+            deviceLatitude: lat,
+            deviceLongitude: lon,
+            devicePressure: device
+        )
+    }
+
+    /// Worst absolute device-vs-station offset in hPa, plus the station count,
+    /// using the same thresholds as the map pins and divergence chart
+    /// (<1.5 verified, <4 drifting, else divergent).
+    var stationAgreement: (count: Int, maxAbsDelta: Double)? {
+        guard let device = displayPressure else { return nil }
+        let deltas = stations.compactMap { $0.pressureHPa.map { $0 - device } }
+        guard let worst = deltas.map({ abs($0) }).max() else { return nil }
+        return (deltas.count, worst)
+    }
+
     /// Compact live-sensor context fed to the on-device Foundation Model.
     var intelligenceContext: String {
         var parts: [String] = []
@@ -159,6 +183,29 @@ final class DashboardViewModel {
             parts.append(String(format: "6-hour change: %+.1f hPa", d6))
         }
         parts.append("Status: \(assessment.level.title)")
+        if settings.isCalibrated, let station = settings.calibrationStationID {
+            parts.append("Barometer is calibrated to NWS station \(station).")
+        }
+        if let agreement = stationAgreement {
+            let verdict: String
+            if agreement.maxAbsDelta < 1.5 {
+                verdict = "sensor VERIFIED against the official network"
+            } else if agreement.maxAbsDelta < 4 {
+                verdict = "sensor drifting from the network (likely altitude/calibration offset, not weather)"
+            } else {
+                verdict = "large divergence from the network — treat absolute pressure with caution, trends remain reliable"
+            }
+            parts.append(String(
+                format: "Station cross-check: %d nearby NWS stations, worst offset %.1f hPa — %@.",
+                agreement.count, agreement.maxAbsDelta, verdict
+            ))
+        }
+        if let gradient = pressureGradient, gradient.isSignificant {
+            parts.append(String(
+                format: "Spatial pressure gradient: falling toward the %@ at %.1f hPa per 100 km (weather systems generally approach from the falling side).",
+                gradient.compassLabel, gradient.magnitudeHPaPer100km
+            ))
+        }
         if isTornadoModeEnabled, let drop = tornadoSignature.drop10m {
             parts.append(String(format: "10-minute change: %+.2f hPa (tornado signature mode)", drop))
         }
@@ -225,6 +272,9 @@ final class DashboardViewModel {
                 parts.append("Rainbow likely now: \(rainbow.lookInstruction).")
             }
         }
+        if let radarStatus, !radarStatus.isOnline {
+            parts.append("Note: nearest NEXRAD radar site \(radarStatus.id) is offline — radar imagery comes from neighboring sites.")
+        }
         if let day1 = outlooks.first(where: { $0.day == 1 }) {
             var outlookLine = "SPC Day 1 outlook: \(day1.categoryTitle)"
             if let tornado = day1.tornadoProbability {
@@ -243,7 +293,13 @@ final class DashboardViewModel {
         let tornado = "\(tornadoSignature.status.rawValue)-\(hasTornadoWarning)-\(hasTornadoWatch)"
         let outlook = outlooks.first { $0.day == 1 }?.categoryCode ?? -1
         let lightning = magnetometer.proximityLabel.rawValue
-        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)|\(lightning)"
+        let agreement: String
+        if let a = stationAgreement {
+            agreement = a.maxAbsDelta < 1.5 ? "verified" : (a.maxAbsDelta < 4 ? "drifting" : "divergent")
+        } else {
+            agreement = "none"
+        }
+        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)|\(lightning)|\(agreement)"
     }
 
     func start() {
