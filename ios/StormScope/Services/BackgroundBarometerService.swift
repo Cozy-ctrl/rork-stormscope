@@ -134,9 +134,11 @@ nonisolated final class BackgroundBarometerService {
         let lastLevel = UserDefaults.standard.integer(forKey: "stormscope.notifier.lastLevel")
         let level = assessment.level
 
-        // Reset the latch when conditions calm
+        // Reset the latch only when conditions genuinely calm (steady or
+        // better) — mirrors StormNotifier's hysteresis so the shared latch
+        // behaves identically on both notification paths.
         if level < .stormLikely {
-            if lastLevel != 0 {
+            if level <= .steady && lastLevel != 0 {
                 UserDefaults.standard.set(0, forKey: "stormscope.notifier.lastLevel")
             }
             return

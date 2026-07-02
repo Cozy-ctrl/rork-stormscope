@@ -63,9 +63,12 @@ final class StormNotifier {
         let lastNotified = UserDefaults.standard.integer(forKey: Self.lastLevelKey)
         let level = assessment.level
 
-        // Reset the latch once conditions calm down so a future storm notifies again.
+        // Reset the latch only once conditions genuinely calm (steady or
+        // better). Holding the latch through .falling adds hysteresis so a
+        // rate oscillating across the falling/storm boundary (-1.5 hPa/hour)
+        // can't re-notify on every crossing.
         if level < .stormLikely {
-            if lastNotified != 0 {
+            if level <= .steady && lastNotified != 0 {
                 UserDefaults.standard.set(0, forKey: Self.lastLevelKey)
             }
             return

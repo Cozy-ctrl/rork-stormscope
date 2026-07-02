@@ -19,6 +19,11 @@ import CoreMotion
 /// 5. **Rolling rate cap.** No more than 10 flagged events per 60 s
 ///    window — excess events are discarded silently.
 ///
+/// Detections also age out: strikes older than one hour are pruned from
+/// history (matching the short-term nature of the signal), and the
+/// proximity label decays back to "Listening" after 10 minutes with no
+/// new strikes — so a storm that has passed doesn't keep the card red.
+///
 /// Even with all five gates, on-device magnetometer lightning detection
 /// is a *probabilistic* signal, not a calibrated instrument. The app
 /// treats it as one input among many (pressure trend, CAPE, radar,
@@ -26,7 +31,6 @@ import CoreMotion
 @Observable
 final class MagnetometerService {
     private let manager = CMMotionManager()
-    private let queue = OperationQueue()
 
     // MARK: - Thresholds
 
@@ -54,6 +58,14 @@ final class MagnetometerService {
     /// before the detector re-arms after movement.
     private let stabilityRequiredSeconds: TimeInterval = 2.0
 
+    /// Strikes older than this are pruned from history so counts and the
+    /// AI context only reflect current storm activity (1 hour).
+    private let strikeHistoryWindow: TimeInterval = 3600
+
+    /// With no new strikes for this long, the proximity label resets to
+    /// the neutral "Listening" state (10 minutes).
+    private let proximityDecaySeconds: TimeInterval = 600
+
     // MARK: - Internal state
 
     /// Rolling baseline of the total field magnitude (µT).
@@ -67,6 +79,10 @@ final class MagnetometerService {
     /// Whether we are currently waiting for a candidate spike to resolve
     /// (checking if it is transient or sustained).
     private var isTrackingCandidate = false
+
+    /// Largest deviation observed while tracking the current candidate —
+    /// this is the true EMP peak used for distance estimation.
+    private var candidatePeakDeviation: Double = 0
 
     /// Timestamp of the last *confirmed* strike event.
     private var lastConfirmedStrike: Date?
@@ -124,6 +140,7 @@ final class MagnetometerService {
         preSpikeBaseline = nil
         preSpikeTime = nil
         isTrackingCandidate = false
+        candidatePeakDeviation = 0
         isSuppressed = false
         lastConfirmedStrike = nil
         recentStrikeTimestamps.removeAll()
@@ -132,9 +149,11 @@ final class MagnetometerService {
         proximityLabel = .none
 
         manager.magnetometerUpdateInterval = 1.0 / 60.0
-        queue.maxConcurrentOperationCount = 1
 
-        manager.startMagnetometerUpdates(to: queue) { [weak self] data, error in
+        // Deliver on the main queue: the service is main-actor isolated and
+        // the per-sample math is trivial, so this keeps all state access
+        // race-free without a detour through a background queue.
+        manager.startMagnetometerUpdates(to: .main) { [weak self] data, error in
             guard let self, let data else { return }
             self.process(data)
         }
@@ -152,6 +171,7 @@ final class MagnetometerService {
         preSpikeBaseline = nil
         preSpikeTime = nil
         isTrackingCandidate = false
+        candidatePeakDeviation = 0
         lastConfirmedStrike = nil
         recentStrikeTimestamps.removeAll()
         varianceWindow.removeAll()
@@ -168,6 +188,8 @@ final class MagnetometerService {
         let now = Date()
         latestTotalField = total
         latestTimestamp = now
+
+        pruneExpiredStrikes(now: now)
 
         // ---- Stability gate ----
         updateStabilityGate(total: total, now: now)
@@ -196,8 +218,27 @@ final class MagnetometerService {
 
         // Begin tracking a candidate spike.
         isTrackingCandidate = true
+        candidatePeakDeviation = deviation
         preSpikeBaseline = currentBaseline
         preSpikeTime = now
+    }
+
+    /// Removes strikes older than the history window and decays the
+    /// proximity label once the last strike goes stale.
+    private func pruneExpiredStrikes(now: Date) {
+        if let first = recentStrikes.first,
+           now.timeIntervalSince(first.timestamp) > strikeHistoryWindow {
+            recentStrikes.removeAll { now.timeIntervalSince($0.timestamp) > strikeHistoryWindow }
+        }
+        if proximityLabel != .none {
+            if let last = recentStrikes.last {
+                if now.timeIntervalSince(last.timestamp) > proximityDecaySeconds {
+                    proximityLabel = .none
+                }
+            } else {
+                proximityLabel = .none
+            }
+        }
     }
 
     // MARK: - Candidate resolution
@@ -220,13 +261,19 @@ final class MagnetometerService {
 
         let elapsed = now.timeIntervalSince(preTime)
 
+        // Track the true peak of the spike — the deviation at the moment of
+        // recovery is near zero by definition, so using it for distance
+        // estimation would be meaningless.
+        candidatePeakDeviation = max(candidatePeakDeviation, deviation)
+
         // Has the field returned close to the pre-spike baseline?
         let recovered = abs(total - preBase) <= recoveryTolerance
 
         if recovered {
             // Transient spike confirmed — a real lightning-like EMP signature.
-            confirmStrike(peakDeviation: deviation, baseline: baseline, now: now)
+            confirmStrike(peakDeviation: candidatePeakDeviation, baseline: baseline, now: now)
             isTrackingCandidate = false
+            candidatePeakDeviation = 0
             preSpikeBaseline = nil
             preSpikeTime = nil
             return
@@ -235,6 +282,7 @@ final class MagnetometerService {
         // If the transient window has expired without recovery, discard.
         if elapsed >= transientWindow {
             isTrackingCandidate = false
+            candidatePeakDeviation = 0
             preSpikeBaseline = nil
             preSpikeTime = nil
             // Suppress briefly after a false candidate to let the baseline
@@ -275,11 +323,7 @@ final class MagnetometerService {
             recentStrikes.removeFirst(recentStrikes.count - maxStrikeHistory)
         }
 
-        // Push proximity to the main actor.
-        let label = strike.proximity
-        Task { @MainActor in
-            self.proximityLabel = label
-        }
+        proximityLabel = strike.proximity
     }
 
     // MARK: - Stability gate

@@ -48,7 +48,7 @@ struct LightningCardView: View {
                 ringPulse = false
             }
         }
-        .sensoryFeedback(.impact(flexibility: .rigid), trigger: magnetometer.strikeCount)
+        .sensoryFeedback(.impact(flexibility: .rigid), trigger: magnetometer.lastStrike?.timestamp)
     }
 
     // MARK: - Header
@@ -183,7 +183,7 @@ struct LightningCardView: View {
             if magnetometer.strikeCount == 0 {
                 noDetectionsHint
             } else {
-                Text("The magnetometer detects the electromagnetic pulse (EMP) from nearby lightning — like having a portable lightning detector in your pocket. Accuracy depends on strike current, terrain, and device orientation.")
+                Text("The magnetometer detects the electromagnetic pulse (EMP) of close-range lightning — strikes within roughly 4 km. Counts cover the last hour; distance is a rough estimate that varies with strike current and device orientation.")
                     .font(.system(size: 10))
                     .foregroundStyle(Theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -237,7 +237,7 @@ struct LightningCardView: View {
                 .textCase(.uppercase)
                 .kerning(0.5)
 
-            ForEach(Array(magnetometer.recentStrikes.prefix(10).enumerated()), id: \.offset) { _, strike in
+            ForEach(Array(magnetometer.recentStrikes.suffix(10).reversed().enumerated()), id: \.offset) { _, strike in
                 HStack(spacing: 8) {
                     Circle()
                         .fill(strike.proximity.tint == "red" ? Theme.red :

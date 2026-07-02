@@ -30,6 +30,7 @@ struct ContentView: View {
             background
             ScrollView {
                 VStack(spacing: 18) {
+                    // Status: overall level + official alerts.
                     header
                     StormBannerView(level: assessment.level)
                     AlertsStripView(
@@ -41,9 +42,8 @@ struct ContentView: View {
                     if !DeviceCapability.hasBarometer {
                         demoBanner
                     }
-                    if DeviceCapability.hasMagnetometer {
-                        LightningCardView(magnetometer: viewModel.magnetometer)
-                    }
+
+                    // Core instrument: live pressure, tendency, and history.
                     PressureGaugeView(
                         pressure: viewModel.displayPressure,
                         level: assessment.level,
@@ -54,6 +54,27 @@ struct ContentView: View {
                     )
                     .padding(.vertical, 4)
                     TendencyRowView(delta1h: assessment.delta1h, delta3h: assessment.delta3h, pressureMode: pressureMode)
+                    TrendChartView(readings: viewModel.displayReadings, tint: assessment.level.tint, pressureMode: pressureMode)
+
+                    // Threat detection: micro-drop analysis + lightning EMP.
+                    TornadoModeView(
+                        isEnabled: $viewModel.isTornadoModeEnabled,
+                        signature: viewModel.tornadoSignature,
+                        hasTornadoWarning: viewModel.hasTornadoWarning,
+                        hasTornadoWatch: viewModel.hasTornadoWatch,
+                        pressureMode: pressureMode,
+                        isSimulated: viewModel.barometer.isSimulated
+                    )
+                    if DeviceCapability.hasMagnetometer {
+                        LightningCardView(magnetometer: viewModel.magnetometer)
+                    }
+                    AIInsightCardView(
+                        contextSummary: viewModel.intelligenceContext,
+                        refreshKey: viewModel.intelligenceKey,
+                        fallbackText: assessment.level.detail
+                    )
+
+                    // Situational awareness: radar/satellite map + SPC outlook.
                     RadarCardView(
                         latitude: viewModel.location.latitude,
                         longitude: viewModel.location.longitude,
@@ -65,20 +86,8 @@ struct ContentView: View {
                         outlooks: viewModel.outlooks,
                         isLoading: viewModel.isLoadingOutlook
                     )
-                    TornadoModeView(
-                        isEnabled: $viewModel.isTornadoModeEnabled,
-                        signature: viewModel.tornadoSignature,
-                        hasTornadoWarning: viewModel.hasTornadoWarning,
-                        hasTornadoWatch: viewModel.hasTornadoWatch,
-                        pressureMode: pressureMode,
-                        isSimulated: viewModel.barometer.isSimulated
-                    )
-                    AIInsightCardView(
-                        contextSummary: viewModel.intelligenceContext,
-                        refreshKey: viewModel.intelligenceKey,
-                        fallbackText: assessment.level.detail
-                    )
-                    TrendChartView(readings: viewModel.displayReadings, tint: assessment.level.tint, pressureMode: pressureMode)
+
+                    // Verification: official stations and model conditions.
                     StationsCardView(
                         stations: viewModel.stations,
                         devicePressure: viewModel.displayPressure,

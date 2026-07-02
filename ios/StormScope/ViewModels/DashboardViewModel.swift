@@ -169,9 +169,9 @@ final class DashboardViewModel {
         }
         if magnetometer.strikeCount > 0 {
             if let dist = magnetometer.estimatedDistanceKm {
-                parts.append("Lightning: \(magnetometer.strikeCount) strikes detected, last ~\(String(format: "%.0f", dist)) km away")
+                parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour, last ~\(String(format: "%.1f", dist)) km away")
             } else {
-                parts.append("Lightning: \(magnetometer.strikeCount) strikes detected on magnetometer")
+                parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour")
             }
         }
         if let day1 = outlooks.first(where: { $0.day == 1 }) {
@@ -186,12 +186,13 @@ final class DashboardViewModel {
 
     /// Coarse identity for the AI insight so it regenerates only when the
     /// situation meaningfully changes (level, half-hPa rate bucket, tornado
-    /// state) instead of on every sensor tick.
+    /// state, lightning proximity bucket) instead of on every sensor tick.
     var intelligenceKey: String {
         let rateBucket = assessment.ratePerHour.map { String(format: "%.1f", ($0 * 2).rounded() / 2) } ?? "none"
         let tornado = "\(tornadoSignature.status.rawValue)-\(hasTornadoWarning)-\(hasTornadoWatch)"
         let outlook = outlooks.first { $0.day == 1 }?.categoryCode ?? -1
-        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)"
+        let lightning = magnetometer.proximityLabel.rawValue
+        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)|\(lightning)"
     }
 
     func start() {

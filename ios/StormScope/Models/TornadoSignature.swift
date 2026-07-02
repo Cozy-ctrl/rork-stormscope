@@ -28,13 +28,18 @@ nonisolated struct TornadoSignature {
     /// instability (CAPE in J/kg, Lifted Index in °C) from the weather model.
     /// High CAPE with a strongly negative Lifted Index means the environment
     /// can support severe rotation, so borderline pressure falls escalate.
+    ///
+    /// The instability gate matches the weather strip's severity tiers so the
+    /// "thresholds tightened" note appears exactly when either metric shows
+    /// orange or worse there: CAPE ≥ 2500 J/kg ("very unstable") or
+    /// Lifted Index ≤ -4 ("unstable — storms probable").
     static func analyze(
         readings: [PressureReading],
         cape: Double? = nil,
         liftedIndex: Double? = nil,
         now: Date = Date()
     ) -> TornadoSignature {
-        let unstable = (cape ?? 0) >= 2000 || (liftedIndex ?? 0) <= -4
+        let unstable = (cape ?? 0) >= 2500 || (liftedIndex ?? 0) <= -4
         let shortWindow = readings.filter { now.timeIntervalSince($0.timestamp) <= 600 && $0.timestamp <= now }
         let volatilityWindow = readings.filter { now.timeIntervalSince($0.timestamp) <= 1800 && $0.timestamp <= now }
         let jitter = volatility(of: volatilityWindow)
@@ -54,7 +59,11 @@ nonisolated struct TornadoSignature {
             // A strong fall in an unstable environment (high CAPE / very
             // negative Lifted Index) is treated as a signature.
             status = .signature
-        } else if drop <= -0.5 || (jitter ?? 0) >= 0.30 {
+        } else if drop <= -0.5 || (jitter ?? 0) >= 0.15 {
+            // Readings are recorded once per minute, so jitter is the mean
+            // absolute minute-to-minute change. Sensor noise sits near
+            // 0.02–0.05 hPa; sustained ≥0.15 hPa/min indicates genuine
+            // pressure pumping. (The previous 0.30 was unreachable.)
             status = .elevated
         } else if drop <= -0.3 && unstable {
             status = .elevated
