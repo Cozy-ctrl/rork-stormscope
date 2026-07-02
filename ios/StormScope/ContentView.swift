@@ -87,7 +87,17 @@ struct ContentView: View {
                         isLoading: viewModel.isLoadingOutlook
                     )
 
-                    // Verification: official stations and model conditions.
+                    // Verification: station map + official station readings.
+                    StationsMapCardView(
+                        stations: viewModel.stations,
+                        deviceLatitude: viewModel.location.latitude,
+                        deviceLongitude: viewModel.location.longitude,
+                        devicePressure: viewModel.displayPressure,
+                        pressureMode: pressureMode,
+                        isLoading: viewModel.isLoadingStations,
+                        errorMessage: viewModel.stationsError,
+                        isExpanded: $settings.stationsMapExpanded
+                    )
                     StationsCardView(
                         stations: viewModel.stations,
                         devicePressure: viewModel.displayPressure,

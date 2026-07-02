@@ -70,7 +70,7 @@ nonisolated final class StationsService {
     func fetchNearbyObservations(
         latitude: Double,
         longitude: Double,
-        limit: Int = 3
+        limit: Int = 8
     ) async throws -> [StationObservation] {
         let pointsURLString = String(format: "https://api.weather.gov/points/%.4f,%.4f", latitude, longitude)
         guard let pointsURL = URL(string: pointsURLString) else { throw StationsServiceError.badURL }
@@ -116,9 +116,13 @@ nonisolated final class StationsService {
         }
 
         let coordinates = feature.geometry.coordinates
+        var stationLat = 0.0
+        var stationLon = 0.0
         var distanceKm = 0.0
         if coordinates.count >= 2 {
-            let stationLocation = CLLocation(latitude: coordinates[1], longitude: coordinates[0])
+            stationLat = coordinates[1]
+            stationLon = coordinates[0]
+            let stationLocation = CLLocation(latitude: stationLat, longitude: stationLon)
             distanceKm = userLocation.distance(from: stationLocation) / 1000.0
         }
 
@@ -140,6 +144,8 @@ nonisolated final class StationsService {
             return StationObservation(
                 id: stationId,
                 name: feature.properties.name,
+                latitude: stationLat,
+                longitude: stationLon,
                 distanceKm: distanceKm,
                 pressureHPa: pressurePa.map { $0 / 100.0 },
                 temperatureC: properties.temperature?.value,
