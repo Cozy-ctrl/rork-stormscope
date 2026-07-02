@@ -5,11 +5,11 @@ import Foundation
 ///
 /// Distance estimation is coarse. A strong cloud-to-ground strike produces
 /// a magnetic pulse of very roughly 30 µT·km — about 30 µT at 1 km, falling
-/// to ~3 µT at 10 km. Because the detector requires an 8 µT deviation to
-/// register at all (movement rejection), only close-range strikes (within
-/// a few km) are detectable, and the proximity buckets reflect that. Real
-/// values vary with strike current and path — treat this as an approximate
-/// guide, not a precise measurement.
+/// to ~3 µT at 10 km. Because the detector requires a 12 µT deviation to
+/// register at all (movement rejection), only very close-range strikes
+/// (within ~2.5 km) are detectable, and the proximity buckets reflect that.
+/// Real values vary with strike current and path — treat this as an
+/// approximate guide, not a precise measurement.
 nonisolated struct MagneticStrikeEvent {
     /// When the spike was detected.
     let timestamp: Date
@@ -26,14 +26,14 @@ nonisolated struct MagneticStrikeEvent {
     /// Coarse distance estimate based on EMP signal strength, in km.
     var estimatedDistanceKm: Double {
         // Inverse falloff anchored at ~30 µT·km for a strong strike.
-        // Clamped to the detector's usable range: the 8 µT floor means
-        // anything registered is within a few kilometers.
+        // Clamped to the detector's usable range: the 12 µT floor means
+        // anything registered is within ~2.5 km.
         let reference = max(peakDeviation, 1.0)
         return min(max(30.0 / reference, 0.2), 10.0)
     }
 
     /// Human-readable distance bucket, scaled to the detector's actual
-    /// reach (the 8 µT floor caps estimates near ~4 km).
+    /// reach (the 12 µT floor caps estimates near ~2.5 km).
     var proximity: StrikeProximity {
         let d = estimatedDistanceKm
         if d <= 1.0 { return .veryClose }

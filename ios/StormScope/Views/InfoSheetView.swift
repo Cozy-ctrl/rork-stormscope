@@ -256,7 +256,7 @@ struct InfoSheetView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 5) {
-                bullet("8 \u{00B5}T threshold \u{2014} phone movement alone produces 10\u{20135}0 \u{00B5}T; anything below 8 \u{00B5}T is ignored.")
+                bullet("12 \u{00B5}T threshold \u{2014} phone movement alone produces 10\u{20135}0 \u{00B5}T; anything below 12 \u{00B5}T is ignored to eliminate false readings.")
                 bullet("Transient-spike verification \u{2014} real EMP spikes and decays in under a second. Sustained elevation means device movement.")
                 bullet("Stability gate \u{2014} detection pauses when the phone is being handled (high magnetic variance) and re-arms after 2 seconds of stillness.")
                 bullet("Minimum 3-second interval between distinct strikes.")
@@ -268,7 +268,7 @@ struct InfoSheetView: View {
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.top, 4)
 
-            Text("A strong cloud-to-ground strike produces roughly 30 \u{00B5}T\u{00B7}km \u{2014} about 30 \u{00B5}T at 1 km, falling to ~3 \u{00B5}T at 10 km. With an 8 \u{00B5}T detection floor, only close-range strikes (within ~4 km) are registered. Distance buckets are approximate and vary with strike current and device orientation.")
+            Text("A strong cloud-to-ground strike produces roughly 30 \u{00B5}T\u{00B7}km \u{2014} about 30 \u{00B5}T at 1 km, falling to ~3 \u{00B5}T at 10 km. With a 12 \u{00B5}T detection floor, only very close strikes (within ~2.5 km) are registered. Distance buckets are approximate and vary with strike current and device orientation.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

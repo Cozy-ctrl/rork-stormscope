@@ -6,8 +6,9 @@ import CoreMotion
 ///
 /// Detection strategy — five layers of false-positive suppression:
 ///
-/// 1. **Elevated threshold (8 µT).** Phone movement alone can produce
-///    10–50 µT swings; 2.5 µT was far too low.
+/// 1. **Elevated threshold (12 µT).** Phone movement alone can produce
+///    10–50 µT swings; anything below 12 µT is ignored to reject
+///    false readings from device handling.
 /// 2. **Transient-spike verification.** Real lightning EMP spikes and
 ///    decays in under a second. If the field stays elevated for >1 s
 ///    it is device movement, not a strike.
@@ -36,7 +37,7 @@ final class MagnetometerService {
 
     /// Minimum deviation above the rolling baseline (µT) required to
     /// consider a reading as a candidate spike.
-    private let spikeThreshold: Double = 8.0
+    private let spikeThreshold: Double = 12.0
 
     /// Seconds after a spike during which the field must return to
     /// within `recoveryTolerance` of baseline. If it does not, the
