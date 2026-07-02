@@ -77,8 +77,7 @@ struct RadarCardView: View {
             Spacer()
             if layerMode.showsRadar {
                 Text(frameLabel)
-
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isLiveFrame ? Theme.green : Theme.amber)
                 .padding(.horizontal, 8)
