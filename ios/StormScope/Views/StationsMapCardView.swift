@@ -95,14 +95,10 @@ struct StationsMapCardView: View {
         Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                 isExpanded.toggle()
-                // Recenter on the device when expanding.
-                if isExpanded, let lat = deviceLatitude, let lon = deviceLongitude {
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                        latitudinalMeters: 160_000,
-                        longitudinalMeters: 160_000
-                    ))
-                }
+            }
+            // Fit all pins when expanding.
+            if isExpanded {
+                recenter()
             }
         } label: {
             HStack(spacing: 8) {
@@ -158,31 +154,84 @@ struct StationsMapCardView: View {
 
     private var mapView: some View {
         // Use the Color+overlay pattern for the map container so it has a
-        // definite frame while Map fills it.
+        // definite frame while Map fills it. Clip AFTER the overlay so the
+        // map itself is rounded.
         Color(.black)
             .frame(height: 260)
-            .clipShape(.rect(cornerRadius: 14))
             .overlay {
-                Map(position: $cameraPosition, selection: $selectedStation) {
+                Map(position: $cameraPosition) {
                     // Device location marker.
                     if let lat = deviceLatitude, let lon = deviceLongitude {
                         Marker("You", systemImage: "location.circle.fill", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
                             .tint(Theme.cyan)
                     }
 
-                    // Station markers with pressure callouts.
+                    // Station pins; tapping a pin toggles its detail callout.
                     ForEach(stations) { station in
-                        Annotation(coordinate: station.coordinate) {
-                            stationAnnotation(station)
-                        } label: {
-                            stationPin(station)
+                        Annotation(station.id, coordinate: station.coordinate, anchor: .bottom) {
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                    selectedStation = selectedStation?.id == station.id ? nil : station
+                                }
+                            } label: {
+                                stationPin(station)
+                            }
+                            .buttonStyle(.plain)
                         }
+                        .annotationTitles(.hidden)
                     }
                 }
                 .mapStyle(.imagery(elevation: .flat))
                 .mapControlVisibility(.hidden)
-                .allowsHitTesting(true)
+                // Detail callout for the selected station, floating over the map
+                // so it never blocks other pins until requested.
+                .overlay(alignment: .top) {
+                    if let selected = selectedStation,
+                       let current = stations.first(where: { $0.id == selected.id }) {
+                        stationAnnotation(current)
+                            .padding(.top, 10)
+                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
+                    }
+                }
             }
+            .clipShape(.rect(cornerRadius: 14))
+            .onChange(of: stations.map(\.id)) { _, _ in
+                recenter()
+                // Drop a stale selection if the station list changed.
+                if let selected = selectedStation, !stations.contains(where: { $0.id == selected.id }) {
+                    selectedStation = nil
+                }
+            }
+            .onChange(of: deviceLatitude) { _, _ in
+                recenter()
+            }
+    }
+
+    /// Fits the camera around the device and all station coordinates.
+    private func recenter() {
+        var coordinates: [CLLocationCoordinate2D] = stations.map { $0.coordinate }
+        if let lat = deviceLatitude, let lon = deviceLongitude {
+            coordinates.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+        guard !coordinates.isEmpty else { return }
+
+        let lats = coordinates.map(\.latitude)
+        let lons = coordinates.map(\.longitude)
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return }
+
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+        // Pad the span so pins never sit on the edge; enforce a minimum zoom.
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((maxLat - minLat) * 1.5, 0.35),
+            longitudeDelta: max((maxLon - minLon) * 1.5, 0.35)
+        )
+        withAnimation(.easeInOut(duration: 0.5)) {
+            cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+        }
     }
 
     /// A colored pin showing the selected metric (or a dash if unavailable).
@@ -199,7 +248,7 @@ struct StationsMapCardView: View {
 
         return VStack(spacing: 1) {
             VStack(spacing: 0) {
-                Text(station.id.replacingOccurrences(of: "K", with: ""))
+                Text(station.id.hasPrefix("K") ? String(station.id.dropFirst()) : station.id)
                     .font(.system(size: 9, weight: .bold, design: .rounded))
                 if let valueText {
                     Text(valueText)
@@ -244,10 +293,24 @@ struct StationsMapCardView: View {
     /// An expanded callout shown when a station pin is tapped.
     private func stationAnnotation(_ station: StationObservation) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(station.name)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(2)
+            HStack(alignment: .top, spacing: 6) {
+                Text(station.name)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        selectedStation = nil
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close station details")
+            }
 
             if let pressure = station.pressureHPa {
                 HStack(spacing: 4) {
@@ -297,8 +360,9 @@ struct StationsMapCardView: View {
             .foregroundStyle(Theme.textTertiary)
         }
         .padding(10)
-        .frame(width: 200)
+        .frame(width: 220)
         .background(.ultraThinMaterial, in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.12), lineWidth: 1))
         .environment(\.colorScheme, .dark)
     }
 
