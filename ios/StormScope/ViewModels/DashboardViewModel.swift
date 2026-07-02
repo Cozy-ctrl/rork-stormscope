@@ -18,6 +18,7 @@ final class DashboardViewModel {
     private let outlookService = OutlookService()
     private let radarStatusService = RadarStatusService()
     private var monitorTask: Task<Void, Never>?
+    private var surgeTask: Task<Void, Never>?
 
     private(set) var weather: WeatherSnapshot?
     private(set) var weatherError: String?
@@ -36,6 +37,13 @@ final class DashboardViewModel {
 
     /// Health of the nearest NEXRAD site; nil while unknown or on lookup failure.
     private(set) var radarStatus: RadarSiteStatus?
+
+    /// Latest station cross-check of a device-detected extreme pressure event.
+    private(set) var confirmation: EventConfirmation?
+    /// True while the app is re-polling nearby stations every few minutes to
+    /// confirm an extreme pressure signal.
+    private(set) var isRapidPollingActive = false
+    private(set) var isCheckingConfirmation = false
 
     var isTornadoModeEnabled: Bool = UserDefaults.standard.bool(forKey: "stormscope.tornadoMode") {
         didSet { UserDefaults.standard.set(isTornadoModeEnabled, forKey: "stormscope.tornadoMode") }
@@ -194,6 +202,9 @@ final class DashboardViewModel {
                 parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour")
             }
         }
+        if let confirmation, isRapidPollingActive {
+            parts.append(confirmation.summaryLine)
+        }
         if let day1 = outlooks.first(where: { $0.day == 1 }) {
             var outlookLine = "SPC Day 1 outlook: \(day1.categoryTitle)"
             if let tornado = day1.tornadoProbability {
@@ -252,6 +263,7 @@ final class DashboardViewModel {
                 )
                 self.pushLiveActivityUpdate()
                 self.saveWidgetSnapshot()
+                self.evaluateSurgeState()
                 try? await Task.sleep(for: .seconds(60))
             }
         }
@@ -273,6 +285,66 @@ final class DashboardViewModel {
         )
         pushLiveActivityUpdate(force: hasTornadoWarning)
         saveWidgetSnapshot()
+    }
+
+    // MARK: - Extreme-event station confirmation
+
+    /// True while the device barometer is reporting an extreme pressure event
+    /// worth cross-validating against official station sensors.
+    var isExtremeEventActive: Bool {
+        assessment.level >= .stormLikely || tornadoSignature.status == .signature
+    }
+
+    /// Enters or exits rapid station polling based on the current signal.
+    /// Called once a minute from the monitor loop, so surge mode engages
+    /// within 60 seconds of an extreme drop and winds down when it clears.
+    private func evaluateSurgeState() {
+        if isExtremeEventActive {
+            startRapidStationPolling()
+        } else {
+            stopRapidStationPolling()
+        }
+    }
+
+    /// Rapidly re-polls nearby NWS stations (every 5 minutes vs. the normal
+    /// pull-to-refresh cadence) and compares their hour-over-hour pressure
+    /// trends against the device signal. ASOS stations issue special reports
+    /// during rapid pressure changes, so frequent polling catches them early.
+    private func startRapidStationPolling() {
+        guard surgeTask == nil else { return }
+        isRapidPollingActive = true
+        surgeTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.runConfirmationCheck()
+                try? await Task.sleep(for: .seconds(300))
+            }
+        }
+    }
+
+    private func stopRapidStationPolling() {
+        guard surgeTask != nil else { return }
+        surgeTask?.cancel()
+        surgeTask = nil
+        isRapidPollingActive = false
+        confirmation = nil
+    }
+
+    /// One confirmation pass: refresh the station list, then pull each nearby
+    /// station's observation history and build a verdict.
+    func runConfirmationCheck() async {
+        guard !isCheckingConfirmation else { return }
+        isCheckingConfirmation = true
+        defer { isCheckingConfirmation = false }
+
+        await refreshStations()
+        let candidates = stations.filter { $0.pressureHPa != nil }
+        guard !candidates.isEmpty else {
+            confirmation = EventConfirmation.build(trends: [])
+            return
+        }
+        let trends = await stationsService.fetchPressureTrends(for: candidates)
+        confirmation = EventConfirmation.build(trends: trends)
     }
 
     /// Permanently deletes recorded pressure history and resets preferences.

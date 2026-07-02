@@ -65,6 +65,13 @@ nonisolated final class StationsService {
         let properties: Properties
     }
 
+    private struct ObservationHistoryResponse: Codable {
+        struct Feature: Codable {
+            let properties: ObservationResponse.Properties
+        }
+        let features: [Feature]
+    }
+
     // MARK: - API
 
     func fetchNearbyObservations(
@@ -102,7 +109,88 @@ nonisolated final class StationsService {
         return results.sorted { $0.distanceKm < $1.distanceKm }
     }
 
+    /// Pulls each station's recent observation history and computes an
+    /// hour-over-hour pressure delta. Used during extreme-event rapid polling
+    /// to confirm a device-detected pressure crash against official sensors.
+    /// ASOS stations issue special (SPECI) reports during rapid pressure
+    /// changes, so re-polling every few minutes catches them early.
+    func fetchPressureTrends(
+        for stations: [StationObservation],
+        maxStations: Int = 5
+    ) async -> [StationPressureTrend] {
+        let picks = Array(stations.prefix(maxStations))
+        guard !picks.isEmpty else { return [] }
+
+        var results: [StationPressureTrend] = []
+        await withTaskGroup(of: StationPressureTrend?.self) { group in
+            for station in picks {
+                group.addTask { [weak self] in
+                    await self?.pressureTrend(for: station)
+                }
+            }
+            for await trend in group {
+                if let trend {
+                    results.append(trend)
+                }
+            }
+        }
+        return results.sorted { $0.distanceKm < $1.distanceKm }
+    }
+
     // MARK: - Helpers
+
+    /// Fetches ~2.5 hours of observations for one station and computes the
+    /// pressure change over the last hour (nil when the station hasn't
+    /// reported enough points). Returns nil on network failure so one dead
+    /// station never fails the confirmation check.
+    private func pressureTrend(for station: StationObservation) async -> StationPressureTrend? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        let start = formatter.string(from: Date().addingTimeInterval(-2.5 * 3600))
+        guard let url = URL(string: "https://api.weather.gov/stations/\(station.id)/observations?start=\(start)") else {
+            return nil
+        }
+
+        do {
+            let history: ObservationHistoryResponse = try await fetch(url)
+            var samples: [(timestamp: Date, hPa: Double)] = []
+            for feature in history.features {
+                let properties = feature.properties
+                guard let timestamp = properties.timestamp,
+                      let pressurePa = properties.seaLevelPressure?.value ?? properties.barometricPressure?.value else {
+                    continue
+                }
+                samples.append((timestamp, pressurePa / 100.0))
+            }
+            samples.sort { $0.timestamp < $1.timestamp }
+            guard let latest = samples.last else { return nil }
+
+            // Anchor: the observation closest to one hour before the latest
+            // report, within a 45-minute tolerance (stations report ~hourly).
+            let target = latest.timestamp.addingTimeInterval(-3600)
+            let anchor = samples.min {
+                abs($0.timestamp.timeIntervalSince(target)) < abs($1.timestamp.timeIntervalSince(target))
+            }
+            var delta: Double?
+            if let anchor,
+               anchor.timestamp < latest.timestamp,
+               abs(anchor.timestamp.timeIntervalSince(target)) <= 2700 {
+                delta = latest.hPa - anchor.hPa
+            }
+
+            return StationPressureTrend(
+                id: station.id,
+                name: station.name,
+                distanceKm: station.distanceKm,
+                latestHPa: latest.hPa,
+                deltaHPa: delta,
+                observedAt: latest.timestamp
+            )
+        } catch {
+            print("[Stations] \(station.id) trend history unavailable: \(error.localizedDescription)")
+            return nil
+        }
+    }
 
     /// Fetches a single station's latest observation; returns nil if the
     /// station has no recent report so one dead station doesn't fail the card.

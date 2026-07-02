@@ -33,6 +33,16 @@ struct ContentView: View {
                     // Status: overall level + official alerts.
                     header
                     StormBannerView(level: assessment.level)
+                    if viewModel.isRapidPollingActive {
+                        EventConfirmationCardView(
+                            confirmation: viewModel.confirmation,
+                            isChecking: viewModel.isCheckingConfirmation,
+                            pressureMode: pressureMode,
+                            onCheckNow: {
+                                Task { await viewModel.runConfirmationCheck() }
+                            }
+                        )
+                    }
                     AlertsStripView(
                         alerts: viewModel.alerts,
                         errorMessage: viewModel.alertsError,
