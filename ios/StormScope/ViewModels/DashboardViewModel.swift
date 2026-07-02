@@ -169,6 +169,23 @@ final class DashboardViewModel {
                 weatherLine += String(format: ", gusts %.0f km/h", gusts)
             }
             parts.append(weatherLine)
+            if let rate = weather.precipitationNow, rate >= 0.1 {
+                parts.append(String(format: "Precipitation falling now: %.1f mm/h", rate))
+            }
+            if let total = weather.precipitationLast24h, total >= 1 {
+                parts.append(String(format: "24-hour precipitation total: %.1f mm", total))
+            }
+        }
+        if let windStation = stations.first(where: { $0.windSpeedKmh != nil }),
+           let observedWind = windStation.windSpeedKmh {
+            var windLine = String(format: "Observed wind at station %@ (%.0f km away): %.0f km/h", windStation.id, windStation.distanceKm, observedWind)
+            if let direction = windStation.windDirectionDeg {
+                windLine += String(format: " from %.0f°", direction)
+            }
+            if let gust = windStation.windGustKmh {
+                windLine += String(format: ", gusting %.0f km/h", gust)
+            }
+            parts.append(windLine)
         }
         if magnetometer.strikeCount > 0 {
             if let dist = magnetometer.estimatedDistanceKm {

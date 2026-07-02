@@ -30,6 +30,8 @@ struct RadarCardView: View {
                 layerPicker
                 if layerMode.showsRadar {
                     scrubber
+                } else if layerMode.showsVelocity {
+                    velocityCaption
                 } else {
                     satelliteCaption
                 }
@@ -66,7 +68,7 @@ struct RadarCardView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: layerMode == .satellite ? "cloud.circle.fill" : "cloud.rain.circle.fill")
+            Image(systemName: headerIcon)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.cyan)
             Text(headerTitle)
@@ -75,6 +77,7 @@ struct RadarCardView: View {
             Spacer()
             if layerMode.showsRadar {
                 Text(frameLabel)
+
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isLiveFrame ? Theme.green : Theme.amber)
@@ -83,7 +86,7 @@ struct RadarCardView: View {
                 .background((isLiveFrame ? Theme.green : Theme.amber).opacity(0.12))
                 .clipShape(Capsule())
             } else {
-                Text("LIVE IR")
+                Text(layerMode.showsVelocity ? "LATEST SCAN" : "LIVE IR")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(Theme.green)
                     .padding(.horizontal, 8)
@@ -94,9 +97,18 @@ struct RadarCardView: View {
         }
     }
 
+    private var headerIcon: String {
+        switch layerMode {
+        case .velocity: return "arrow.left.arrow.right.circle.fill"
+        case .satellite: return "cloud.circle.fill"
+        default: return "cloud.rain.circle.fill"
+        }
+    }
+
     private var headerTitle: String {
         switch layerMode {
         case .radar: return "Live Radar"
+        case .velocity: return "Storm Velocity"
         case .satellite: return "Satellite"
         case .both: return "Radar + Satellite"
         }
@@ -110,22 +122,55 @@ struct RadarCardView: View {
                         layerMode = mode
                     }
                 } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: mode.icon)
-                            .font(.system(size: 10, weight: .semibold))
-                        Text(mode.title)
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundStyle(layerMode == mode ? Theme.ink : Theme.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 32)
-                    .background(layerMode == mode ? Theme.cyan : Color.white.opacity(0.05))
-                    .clipShape(Capsule())
+                    Text(mode.title)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .foregroundStyle(layerMode == mode ? Theme.ink : Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .background(layerMode == mode ? Theme.cyan : Color.white.opacity(0.05))
+                        .clipShape(Capsule())
                 }
                 .accessibilityLabel("Show \(mode.title) layer")
             }
         }
         .sensoryFeedback(.selection, trigger: layerMode)
+    }
+
+    private var velocityCaption: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 10) {
+                velocityLegendSwatch(color: Theme.green, label: "Toward radar")
+                velocityLegendSwatch(color: Theme.red, label: "Away from radar")
+                Spacer()
+                if let radarStatus {
+                    Text("K\(radarStatus.id)")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+            }
+            Text("Storm-relative velocity from the nearest NEXRAD site. A tight green/red couplet side by side marks rotation — the signature of a mesocyclone.")
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            if radarStatus == nil {
+                Text("Locating the nearest radar site… velocity tiles appear once found.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.amber.opacity(0.9))
+            }
+        }
+    }
+
+    private func velocityLegendSwatch(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .frame(width: 10, height: 10)
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+        }
     }
 
     private var satelliteCaption: some View {
@@ -165,6 +210,7 @@ struct RadarCardView: View {
                         center: center,
                         frameSuffix: Self.frameSuffixes[Int(frameIndex)],
                         layerMode: layerMode,
+                        velocitySiteID: radarStatus?.id,
                         alerts: alerts,
                         onSelectAlert: { alert in
                             selectedAlert = alert

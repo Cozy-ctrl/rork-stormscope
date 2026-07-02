@@ -1,6 +1,18 @@
 import SwiftUI
 import MapKit
 
+/// Which measurement the station map pins display.
+nonisolated enum StationMapMetric: String, CaseIterable, Identifiable {
+    case pressure
+    case dewPoint
+
+    var id: String { rawValue }
+
+    var title: String {
+        self == .pressure ? "Pressure" : "Dew Point"
+    }
+}
+
 /// A hideable map showing NWS observation stations around the device location.
 /// Station pins show measured pressure; tapping reveals wind, temperature, and
 /// a pressure delta against the device barometer. This spatial view helps spot
@@ -16,6 +28,7 @@ struct StationsMapCardView: View {
     @Binding var isExpanded: Bool
     @State private var selectedStation: StationObservation?
     @State private var cameraPosition: MapCameraPosition
+    @State private var metric: StationMapMetric = .pressure
 
     init(stations: [StationObservation],
          deviceLatitude: Double?,
@@ -63,6 +76,7 @@ struct StationsMapCardView: View {
                 } else if stations.isEmpty, let errorMessage {
                     errorView(errorMessage)
                 } else {
+                    metricPicker
                     mapView
                     insightFooter
                 }
@@ -120,6 +134,28 @@ struct StationsMapCardView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: isExpanded)
     }
 
+    private var metricPicker: some View {
+        HStack(spacing: 6) {
+            ForEach(StationMapMetric.allCases) { option in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        metric = option
+                    }
+                } label: {
+                    Text(option.title)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(metric == option ? Theme.ink : Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 30)
+                        .background(metric == option ? Theme.cyan : Color.white.opacity(0.05))
+                        .clipShape(Capsule())
+                }
+                .accessibilityLabel("Show \(option.title) on station pins")
+            }
+        }
+        .sensoryFeedback(.selection, trigger: metric)
+    }
+
     private var mapView: some View {
         // Use the Color+overlay pattern for the map container so it has a
         // definite frame while Map fills it.
@@ -149,9 +185,43 @@ struct StationsMapCardView: View {
             }
     }
 
-    /// A colored pin showing the station pressure (or a dash if unavailable).
+    /// A colored pin showing the selected metric (or a dash if unavailable).
     private func stationPin(_ station: StationObservation) -> some View {
-        let color: Color = {
+        let color = pinColor(station)
+        let valueText: String? = {
+            switch metric {
+            case .pressure:
+                return nil
+            case .dewPoint:
+                return station.dewPointC.map { String(format: "%.0f°", $0) }
+            }
+        }()
+
+        return VStack(spacing: 1) {
+            VStack(spacing: 0) {
+                Text(station.id.replacingOccurrences(of: "K", with: ""))
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                if let valueText {
+                    Text(valueText)
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 3)
+            .background(color, in: .rect(cornerRadius: 5))
+            Image(systemName: "triangle.fill")
+                .font(.system(size: 8))
+                .foregroundStyle(color)
+                .rotationEffect(.degrees(180))
+                .offset(y: -2)
+        }
+    }
+
+    private func pinColor(_ station: StationObservation) -> Color {
+        switch metric {
+        case .pressure:
             guard let pressure = station.pressureHPa else { return Theme.textTertiary }
             if let device = devicePressure {
                 let delta = abs(pressure - device)
@@ -160,20 +230,14 @@ struct StationsMapCardView: View {
                 return Theme.orange
             }
             return Theme.cyan
-        }()
-
-        return VStack(spacing: 1) {
-            Text(station.id.replacingOccurrences(of: "K", with: ""))
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 3)
-                .background(color, in: .rect(cornerRadius: 5))
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 8))
-                .foregroundStyle(color)
-                .rotationEffect(.degrees(180))
-                .offset(y: -2)
+        case .dewPoint:
+            // Moisture scale: dry air amber → humid storm fuel cyan/orange.
+            guard let dewPoint = station.dewPointC else { return Theme.textTertiary }
+            if dewPoint >= 21 { return Theme.red }
+            if dewPoint >= 18 { return Theme.orange }
+            if dewPoint >= 13 { return Theme.cyan }
+            if dewPoint >= 8 { return Theme.green }
+            return Theme.amber
         }
     }
 
@@ -208,6 +272,9 @@ struct StationsMapCardView: View {
             HStack(spacing: 8) {
                 if let temp = station.temperatureC {
                     labelRow("\(String(format: "%.0f", temp))°C", icon: "thermometer.medium")
+                }
+                if let dew = station.dewPointC {
+                    labelRow("\(String(format: "%.0f", dew))° dew", icon: "drop.fill")
                 }
                 if let wind = station.windSpeedKmh {
                     let dir = station.windDirectionDeg.map(windArrow) ?? ""
@@ -256,11 +323,46 @@ struct StationsMapCardView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Text("Tap a station pin for details. Pin color shows pressure agreement — green is close, orange means a gradient is present.")
+            if let dryline = drylineInsight {
+                HStack(spacing: 6) {
+                    Image(systemName: "drop.triangle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.orange)
+                    Text(dryline)
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.orange.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Text(footerHint)
                 .font(.system(size: 10))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var footerHint: String {
+        switch metric {
+        case .pressure:
+            return "Tap a station pin for details. Pin color shows pressure agreement — green is close, orange means a gradient is present."
+        case .dewPoint:
+            return "Pin color shows moisture — amber is dry air, cyan/orange is humid storm fuel. A sharp dry-to-moist boundary between nearby stations is a dryline, where storms often initiate."
+        }
+    }
+
+    /// Detects a large dew point contrast across nearby stations — the
+    /// classic dryline signature where storms fire. Returns nil when calm.
+    private var drylineInsight: String? {
+        let dewPoints = stations.compactMap { $0.dewPointC }
+        guard dewPoints.count >= 2,
+              let minD = dewPoints.min(), let maxD = dewPoints.max() else { return nil }
+        let spread = maxD - minD
+        if spread >= 8 {
+            return String(format: "Dryline signature: %.0f°C dew point contrast across nearby stations — storm initiation possible along the moisture boundary.", spread)
+        } else if spread >= 5 {
+            return String(format: "Notable dew point gradient (%.0f°C spread) — a moisture boundary is nearby.", spread)
+        }
+        return nil
     }
 
     /// Detects notable pressure gradients across stations — a classic

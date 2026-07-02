@@ -98,6 +98,18 @@ struct ContentView: View {
                         errorMessage: viewModel.weatherError
                     )
 
+                    // Ground truth: observed wind + rainfall accumulation.
+                    StationWindCardView(
+                        stations: viewModel.stations,
+                        weather: viewModel.weather,
+                        units: units
+                    )
+                    PrecipCardView(
+                        weather: viewModel.weather,
+                        stations: viewModel.stations,
+                        units: units
+                    )
+
                     // Verification: official station readings + spatial map + comparison chart.
                     StationsCardView(
                         stations: viewModel.stations,

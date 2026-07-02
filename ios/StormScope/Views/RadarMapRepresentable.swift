@@ -17,6 +17,21 @@ final class RadarTileOverlay: MKTileOverlay {
     }
 }
 
+/// Single-site NEXRAD Storm Relative Radial Velocity (N0S) tiles from the
+/// Iowa Environmental Mesonet RIDGE archive. Green = motion toward the radar,
+/// red = motion away; adjacent green/red couplets indicate rotation.
+final class VelocityTileOverlay: MKTileOverlay {
+    let siteID: String
+
+    init(siteID: String) {
+        self.siteID = siteID
+        let template = "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::\(siteID)-N0S-0/{z}/{x}/{y}.png"
+        super.init(urlTemplate: template)
+        canReplaceMapContent = false
+        tileSize = CGSize(width: 256, height: 256)
+    }
+}
+
 /// GOES infrared cloud-top tiles from the Iowa Environmental Mesonet.
 /// East vs. West satellite is chosen by the map center's longitude so the
 /// Rockies and westward get the better viewing angle.
@@ -46,6 +61,8 @@ struct RadarMapRepresentable: UIViewRepresentable {
     let center: CLLocationCoordinate2D
     let frameSuffix: String
     let layerMode: RadarLayerMode
+    /// Nearest NEXRAD site identifier (e.g. "TLX") for single-site velocity tiles.
+    let velocitySiteID: String?
     let alerts: [NWSAlertFeature]
     let onSelectAlert: (NWSAlertFeature) -> Void
     /// Called when tile fetching starts for a new frame (true) and when the
@@ -80,6 +97,7 @@ struct RadarMapRepresentable: UIViewRepresentable {
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.syncSatellite(on: mapView, mode: layerMode, centerLongitude: center.longitude)
+        context.coordinator.syncVelocity(on: mapView, mode: layerMode, siteID: velocitySiteID)
         context.coordinator.syncRadarFrame(on: mapView, suffix: frameSuffix, mode: layerMode)
         context.coordinator.syncPolygons(on: mapView, alerts: alerts)
         context.coordinator.recenterIfNeeded(on: mapView, center: center)
@@ -107,6 +125,19 @@ struct RadarMapRepresentable: UIViewRepresentable {
                 if existing.isEmpty {
                     mapView.insertOverlay(SatelliteTileOverlay(centerLongitude: centerLongitude), at: 0)
                 }
+            } else if !existing.isEmpty {
+                mapView.removeOverlays(existing)
+            }
+        }
+
+        /// Adds or removes the single-site velocity layer. The overlay is
+        /// rebuilt when the nearest radar site changes.
+        func syncVelocity(on mapView: MKMapView, mode: RadarLayerMode, siteID: String?) {
+            let existing = mapView.overlays.compactMap { $0 as? VelocityTileOverlay }
+            if mode.showsVelocity, let siteID {
+                if let current = existing.first, current.siteID == siteID { return }
+                if !existing.isEmpty { mapView.removeOverlays(existing) }
+                mapView.addOverlay(VelocityTileOverlay(siteID: siteID), level: .aboveRoads)
             } else if !existing.isEmpty {
                 mapView.removeOverlays(existing)
             }
@@ -212,6 +243,11 @@ struct RadarMapRepresentable: UIViewRepresentable {
             if let satellite = overlay as? SatelliteTileOverlay {
                 let renderer = MKTileOverlayRenderer(tileOverlay: satellite)
                 renderer.alpha = 0.82
+                return renderer
+            }
+            if let velocity = overlay as? VelocityTileOverlay {
+                let renderer = MKTileOverlayRenderer(tileOverlay: velocity)
+                renderer.alpha = 0.78
                 return renderer
             }
             if let tile = overlay as? MKTileOverlay {

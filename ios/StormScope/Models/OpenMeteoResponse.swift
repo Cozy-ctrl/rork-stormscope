@@ -13,6 +13,8 @@ nonisolated struct OpenMeteoResponse: Codable {
         let weatherCode: Int
         let windSpeed10m: Double
         let windGusts10m: Double?
+        let windDirection10m: Double?
+        let precipitation: Double?
         let surfacePressure: Double
         let cloudCover: Int?
         let visibility: Double?
@@ -25,6 +27,8 @@ nonisolated struct OpenMeteoResponse: Codable {
             case weatherCode = "weather_code"
             case windSpeed10m = "wind_speed_10m"
             case windGusts10m = "wind_gusts_10m"
+            case windDirection10m = "wind_direction_10m"
+            case precipitation
             case surfacePressure = "surface_pressure"
             case cloudCover = "cloud_cover"
             case visibility
@@ -33,6 +37,9 @@ nonisolated struct OpenMeteoResponse: Codable {
 
     nonisolated struct Hourly: Codable {
         let precipitationProbability: [Int]?
+        /// Hourly precipitation totals in mm; includes past hours when
+        /// `past_hours` is requested.
+        let precipitation: [Double]?
         let cape: [Double]?
         /// Element type is optional because Open-Meteo returns null for hours
         /// where the stability model has no value.
@@ -40,6 +47,7 @@ nonisolated struct OpenMeteoResponse: Codable {
 
         enum CodingKeys: String, CodingKey {
             case precipitationProbability = "precipitation_probability"
+            case precipitation
             case cape
             case liftedIndex = "lifted_index"
         }

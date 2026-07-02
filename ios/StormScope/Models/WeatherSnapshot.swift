@@ -8,6 +8,13 @@ nonisolated struct WeatherSnapshot {
     let windSpeed: Double
     /// Maximum wind gust over the current period, in km/h.
     let windGust: Double?
+    /// Model wind direction in meteorological degrees (direction the wind
+    /// blows FROM; 0 = north, 90 = east).
+    let windDirection: Double?
+    /// Precipitation falling in the current hour, in mm (≈ mm/h rate).
+    let precipitationNow: Double?
+    /// Total model precipitation over the preceding 24 hours, in mm.
+    let precipitationLast24h: Double?
     /// Dew point temperature, in Celsius — critical for storm potential assessment.
     let dewPoint: Double?
     /// Total cloud cover percentage (0–100).
