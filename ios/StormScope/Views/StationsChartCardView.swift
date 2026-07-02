@@ -200,6 +200,7 @@ struct StationsChartCardView: View {
             set: { selectedStationID = $0 }
         ))
         .frame(height: 170)
+        .clipped()
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: metric)
         .sensoryFeedback(.selection, trigger: selectedStationID)
     }

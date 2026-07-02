@@ -161,6 +161,10 @@ struct ContentView: View {
         .task {
             viewModel.start()
         }
+        .onAppear {
+            // Always start with the station map collapsed for a clean dashboard.
+            viewModel.settings.stationsMapExpanded = false
+        }
         .task {
             // Show the safety disclaimer on first launch only.
             if !viewModel.settings.hasAcceptedDisclaimer {
