@@ -100,6 +100,19 @@ final class DashboardViewModel {
         )
     }
 
+    /// Deterministic rainbow visibility from solar geometry + live rain and
+    /// cloud data. Nil until a location fix exists.
+    var rainbowForecast: RainbowForecast? {
+        guard let lat = location.latitude, let lon = location.longitude else { return nil }
+        return RainbowForecast.compute(
+            latitude: lat,
+            longitude: lon,
+            weather: weather,
+            stations: stations,
+            tornadoStatus: tornadoSignature.status
+        )
+    }
+
     var hasTornadoWarning: Bool {
         alerts.contains { $0.isTornadoWarning }
     }
@@ -204,6 +217,13 @@ final class DashboardViewModel {
         }
         if let confirmation, isRapidPollingActive {
             parts.append(confirmation.summaryLine)
+        }
+        if let rainbow = rainbowForecast {
+            if rainbow.isWrapIndicatorActive {
+                parts.append("Rainbow wrap check active: rotation-scale pressure behavior coincides with rainbow optics — possible precipitation wrapping an organized updraft (secondary indicator).")
+            } else if rainbow.verdict == .likely {
+                parts.append("Rainbow likely now: \(rainbow.lookInstruction).")
+            }
         }
         if let day1 = outlooks.first(where: { $0.day == 1 }) {
             var outlookLine = "SPC Day 1 outlook: \(day1.categoryTitle)"

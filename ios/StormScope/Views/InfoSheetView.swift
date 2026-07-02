@@ -26,6 +26,7 @@ struct InfoSheetView: View {
                     // MARK: Atmospheric Analysis
                     atmosphericSection
                     tornadoSection
+                    rainbowSection
 
                     // MARK: Official Data Sources
                     alertsSection
@@ -352,6 +353,42 @@ struct InfoSheetView: View {
             }
 
             Text("A single barometer cannot confirm a tornado \u{2014} the signature is one data point, always paired with official NWS tornado watches and warnings for life-safety decisions.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Rainbow Watch
+
+    private var rainbowSection: some View {
+        section(
+            icon: "rainbow",
+            title: "Rainbow Watch & Wrap Indicator",
+            tint: Theme.cyan
+        ) {
+            Text("Rainbows appear at exactly 42\u{00B0} from the anti-solar point \u{2014} directly opposite the sun. This is pure geometry: when the sun climbs above 42\u{00B0} elevation, no rainbow is visible from the ground, period. StormScope computes the sun\u{2019}s exact position from your GPS location and the time, then cross-checks live rain (weather model rate, nearby station rain gauges, current conditions code) and cloud cover.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("Likely \u{2014} sun below 42\u{00B0}, rain falling, cloud cover under 75%. The card shows the exact compass bearing to look and how high the bow\u{2019}s top arc sits above the horizon (42\u{00B0} minus sun elevation).")
+                bullet("Possible \u{2014} geometry works but conditions are marginal: heavy cloud that needs a sunlight gap, or rain close by rather than overhead.")
+                bullet("Hidden \u{2014} the card stays off the dashboard at night, when the sun is too high, when no rain is near, or under solid overcast.")
+            }
+
+            Text("Rainbow Wrap \u{2014} chaser indicator")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.top, 4)
+
+            Text("\u{201C}Rainbow wrap\u{201D} is a bow forming inside the rain curtain wrapping around a supercell\u{2019}s updraft \u{2014} storm chasers recognise it as a sign of organised severe rotation, sometimes visible around tornadogenesis. When the tornado signature analyser reports Elevated or Signature while rainbow optics are simultaneously possible, the card adds a red wrap-check note and the AI briefing is informed.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("The wrap check is a secondary, experimental indicator \u{2014} it never changes the optical verdict or storm level, and it is no substitute for official NWS warnings. All calculations run on-device with no extra network requests.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)

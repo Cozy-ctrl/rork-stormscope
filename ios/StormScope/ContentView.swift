@@ -97,6 +97,11 @@ struct ContentView: View {
                         isLoading: viewModel.isLoadingOutlook
                     )
 
+                    // Optics: deterministic rainbow geometry from sun + rain data.
+                    if let rainbow = viewModel.rainbowForecast, rainbow.isDisplayWorthy {
+                        RainbowCardView(forecast: rainbow)
+                    }
+
                     // Local conditions summary from the nearest station + device sensor comparison.
                     WeatherStripView(
                         weather: viewModel.weather,
