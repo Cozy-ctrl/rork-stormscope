@@ -197,7 +197,9 @@ final class DashboardViewModel {
 
     func start() {
         barometer.start()
-        magnetometer.start()
+        if settings.lightningDetectionEnabled {
+            magnetometer.start()
+        }
         location.request()
         location.setBackgroundMonitoring(settings.backgroundMonitoringEnabled)
         liveActivity.adoptExistingActivity()
@@ -285,6 +287,17 @@ final class DashboardViewModel {
 
     func applyBackgroundMonitoringSetting() {
         location.setBackgroundMonitoring(settings.backgroundMonitoringEnabled)
+    }
+
+    /// Starts or stops the magnetometer stream based on the user's preference
+    /// and device capability. Called whenever the toggle changes.
+    func applyMagnetometerSetting() {
+        if settings.lightningDetectionEnabled && DeviceCapability.hasMagnetometer {
+            magnetometer.start()
+        } else {
+            magnetometer.stop()
+            magnetometer.clearStrikes()
+        }
     }
 
     func toggleLiveActivity() {

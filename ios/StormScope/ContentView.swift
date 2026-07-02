@@ -65,7 +65,7 @@ struct ContentView: View {
                         pressureMode: pressureMode,
                         isSimulated: viewModel.barometer.isSimulated
                     )
-                    if DeviceCapability.hasMagnetometer {
+                    if DeviceCapability.hasMagnetometer && viewModel.settings.lightningDetectionEnabled {
                         LightningCardView(magnetometer: viewModel.magnetometer)
                     }
                     AIInsightCardView(

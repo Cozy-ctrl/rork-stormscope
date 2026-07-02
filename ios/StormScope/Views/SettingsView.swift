@@ -155,6 +155,25 @@ struct SettingsView: View {
             }
             .listRowBackground(Theme.panel)
 
+            Toggle(isOn: Binding(
+                get: { settings.lightningDetectionEnabled },
+                set: { newValue in
+                    settings.lightningDetectionEnabled = newValue
+                    viewModel.applyMagnetometerSetting()
+                }
+            )) {
+                Label("Lightning Detection", systemImage: "bolt.fill")
+            }
+            .disabled(!DeviceCapability.hasMagnetometer)
+            .listRowBackground(Theme.panel)
+
+            if !DeviceCapability.hasMagnetometer {
+                Text("Lightning detection requires a magnetometer (available on most iPhones since the 3GS).")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textTertiary)
+                    .listRowBackground(Theme.panel)
+            }
+
             if viewModel.notifier.isDenied && (settings.stormNotificationsEnabled || settings.tornadoAlertsEnabled) {
                 Label("Notifications are turned off for StormScope in iOS Settings.", systemImage: "bell.slash.fill")
                     .font(.footnote)
@@ -167,7 +186,7 @@ struct SettingsView: View {
             if !DeviceCapability.hasBarometer {
                 Text("Storm and tornado notifications are based on NWS alert data and work without a barometer. Background monitoring is disabled on this device because it requires the pressure sensor.")
             } else {
-                Text("Storm notifications fire when your barometer detects a rapid pressure drop. Tornado alerts are time-sensitive and relay official NWS warnings. Background monitoring uses significant location changes to keep readings fresh while the app is closed -- your location never leaves the device.")
+                Text("Storm notifications fire when your barometer detects a rapid pressure drop. Tornado alerts are time-sensitive and relay official NWS warnings. Lightning detection uses the device magnetometer to sense EMP spikes from nearby strikes — turn this off to save battery in magnetically noisy environments. Background monitoring uses significant location changes to keep readings fresh while the app is closed — your location never leaves the device.")
             }
         }
         .tint(Theme.cyan)

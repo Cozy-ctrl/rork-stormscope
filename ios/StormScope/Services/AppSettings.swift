@@ -14,6 +14,7 @@ final class AppSettings {
     private static let calibrationOffsetKey = "stormscope.settings.calibrationOffset"
     private static let calibrationStationKey = "stormscope.settings.calibrationStation"
     private static let calibrationDateKey = "stormscope.settings.calibrationDate"
+    private static let lightningDetectionKey = "stormscope.settings.lightningDetection"
 
     var unitSystem: UnitSystem {
         didSet { UserDefaults.standard.set(unitSystem.rawValue, forKey: Self.unitsKey) }
@@ -75,6 +76,14 @@ final class AppSettings {
         }
     }
 
+    /// When enabled, the device magnetometer streams and detects EMP spikes
+    /// consistent with nearby lightning strikes. Turn off to save battery or
+    /// when the device is in a noisy magnetic environment (near speakers,
+    /// chargers, or strong magnets).
+    var lightningDetectionEnabled: Bool {
+        didSet { UserDefaults.standard.set(lightningDetectionEnabled, forKey: Self.lightningDetectionKey) }
+    }
+
     /// Tracks whether the user has acknowledged the safety disclaimer on first launch.
     var hasAcceptedDisclaimer: Bool {
         get { UserDefaults.standard.bool(forKey: "stormscope.settings.disclaimerAccepted") }
@@ -112,6 +121,9 @@ final class AppSettings {
         calibrationOffset = defaults.double(forKey: Self.calibrationOffsetKey)
         calibrationStationID = defaults.string(forKey: Self.calibrationStationKey)
         calibratedAt = defaults.object(forKey: Self.calibrationDateKey) as? Date
+        lightningDetectionEnabled = defaults.object(forKey: Self.lightningDetectionKey) == nil
+            ? true
+            : defaults.bool(forKey: Self.lightningDetectionKey)
     }
 
     /// Records a calibration offset aligned to a specific NWS station.
@@ -137,6 +149,7 @@ final class AppSettings {
         stormNotificationsEnabled = false
         tornadoAlertsEnabled = false
         backgroundMonitoringEnabled = false
+        lightningDetectionEnabled = true
         clearCalibration()
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)
         UserDefaults.standard.removeObject(forKey: Self.pressureUnitKey)
