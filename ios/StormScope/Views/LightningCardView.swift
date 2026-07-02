@@ -7,9 +7,14 @@ import SwiftUI
 /// - Count and time-since-last detected spike
 /// - Visual proximity indicator (color ring + label)
 /// - Recent strike timeline
+/// - Suppression notice when the device is being handled
 ///
 /// Without a magnetometer, the card shows a graceful disabled state
 /// explaining that the feature is unavailable on this device.
+///
+/// Detection is intentionally conservative: real lightning EMP is a
+/// sub-second spike, not a sustained deviation. Phone movement, nearby
+/// electronics, and ambient field changes are filtered out.
 struct LightningCardView: View {
     let magnetometer: MagnetometerService
 
@@ -23,6 +28,8 @@ struct LightningCardView: View {
                 unavailableState
             } else if !magnetometer.isRunning {
                 idleState
+            } else if magnetometer.isSuppressed {
+                suppressedState
             } else {
                 liveState
             }
@@ -118,6 +125,30 @@ struct LightningCardView: View {
         .padding(.vertical, 16)
     }
 
+    // MARK: - Suppressed state
+
+    /// Shown when the detector is gated because the device is moving.
+    /// Movement produces field changes that swamp the lightning signal.
+    private var suppressedState: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "hand.raised.fill")
+                .font(.system(size: 22))
+                .foregroundStyle(Theme.amber)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Detector paused")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Keep the device still for accurate lightning detection. Movement creates magnetic fluctuations that look like false strikes.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .background(Theme.amber.opacity(0.08))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
     // MARK: - Live state
 
     private var liveState: some View {
@@ -149,10 +180,14 @@ struct LightningCardView: View {
                 recentStrikesTimeline
             }
 
-            Text("The magnetometer detects the electromagnetic pulse (EMP) from nearby lightning — like having a portable lightning detector in your pocket. Accuracy depends on strike current, terrain, and device orientation.")
-                .font(.system(size: 10))
-                .foregroundStyle(Theme.textTertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            if magnetometer.strikeCount == 0 {
+                noDetectionsHint
+            } else {
+                Text("The magnetometer detects the electromagnetic pulse (EMP) from nearby lightning — like having a portable lightning detector in your pocket. Accuracy depends on strike current, terrain, and device orientation.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -226,6 +261,28 @@ struct LightningCardView: View {
         }
         .padding(10)
         .background(Color.white.opacity(0.04))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    // MARK: - No-detection hint
+
+    private var noDetectionsHint: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.shield.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.green)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("No strikes detected")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+                Text("The detector is live and listening. Keep the device still — lightning detection is conservative to avoid false alarms from movement or electronics.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .background(Theme.green.opacity(0.06))
         .clipShape(.rect(cornerRadius: 12))
     }
 
