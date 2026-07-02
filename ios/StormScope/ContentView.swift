@@ -148,6 +148,15 @@ struct ContentView: View {
                             pressureMode: pressureMode
                         )
                     }
+                    if let devicePressure = viewModel.displayPressure, !viewModel.stations.isEmpty {
+                        DeviceDeltaCardView(
+                            stations: viewModel.stations,
+                            devicePressure: devicePressure,
+                            deviceLatitude: viewModel.location.latitude,
+                            deviceLongitude: viewModel.location.longitude,
+                            pressureMode: pressureMode
+                        )
+                    }
                     footer
                 }
                 .padding(.horizontal, 16)

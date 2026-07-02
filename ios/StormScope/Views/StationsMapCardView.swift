@@ -160,6 +160,23 @@ struct StationsMapCardView: View {
             .frame(height: 260)
             .overlay {
                 Map(position: $cameraPosition) {
+                    // Delta-colored connection lines from the device to each
+                    // reporting station (pressure mode only) — the line color
+                    // shows how strongly that station disagrees with the
+                    // device barometer, making the local gradient visible.
+                    if metric == .pressure,
+                       let lat = deviceLatitude, let lon = deviceLongitude,
+                       devicePressure != nil {
+                        let deviceCoordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                        ForEach(stations.filter { $0.pressureHPa != nil }) { station in
+                            MapPolyline(coordinates: [deviceCoordinate, station.coordinate])
+                                .stroke(
+                                    pinColor(station).opacity(0.55),
+                                    style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])
+                                )
+                        }
+                    }
+
                     // Device location marker.
                     if let lat = deviceLatitude, let lon = deviceLongitude {
                         Marker("You", systemImage: "location.circle.fill", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
@@ -191,6 +208,15 @@ struct StationsMapCardView: View {
                         stationAnnotation(current)
                             .padding(.top, 10)
                             .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
+                    }
+                }
+                // Computed pressure-gradient compass: the arrow points toward
+                // falling pressure — the direction systems approach from.
+                .overlay(alignment: .bottomLeading) {
+                    if metric == .pressure, let gradient = pressureGradient, gradient.isSignificant {
+                        gradientBadge(gradient)
+                            .padding(8)
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     }
                 }
             }
@@ -232,6 +258,44 @@ struct StationsMapCardView: View {
         withAnimation(.easeInOut(duration: 0.5)) {
             cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
         }
+    }
+
+    /// The inverse-distance-weighted pressure-gradient vector across the
+    /// device and reporting stations; nil when flat or data is missing.
+    private var pressureGradient: PressureGradient? {
+        guard let lat = deviceLatitude, let lon = deviceLongitude,
+              let device = devicePressure else { return nil }
+        return PressureGradient.compute(
+            stations: stations,
+            deviceLatitude: lat,
+            deviceLongitude: lon,
+            devicePressure: device
+        )
+    }
+
+    /// A small floating compass showing which way pressure is falling.
+    private func gradientBadge(_ gradient: PressureGradient) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Theme.amber)
+                .rotationEffect(.degrees(gradient.towardLowBearingDeg))
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Falls \(gradient.compassLabel)")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(String(format: "%.1f hPa/100 km", gradient.magnitudeHPaPer100km))
+                    .font(.system(size: 8, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 9))
+        .overlay(RoundedRectangle(cornerRadius: 9).stroke(Color.white.opacity(0.12), lineWidth: 1))
+        .environment(\.colorScheme, .dark)
+        .accessibilityLabel("Pressure is falling toward the \(gradient.compassLabel)")
     }
 
     /// A colored pin showing the selected metric (or a dash if unavailable).
@@ -408,7 +472,7 @@ struct StationsMapCardView: View {
     private var footerHint: String {
         switch metric {
         case .pressure:
-            return "Tap a station pin for details. Pin color shows pressure agreement — green is close, orange means a gradient is present."
+            return "Tap a station pin for details. Pin and line colors show pressure agreement with your sensor — green is close, orange means a gradient is present. The compass badge points toward falling pressure, where systems usually arrive from."
         case .dewPoint:
             return "Pin color shows moisture — amber is dry air, cyan/orange is humid storm fuel. A sharp dry-to-moist boundary between nearby stations is a dryline, where storms often initiate."
         }
