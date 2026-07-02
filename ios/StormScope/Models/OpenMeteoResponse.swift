@@ -1,0 +1,43 @@
+import Foundation
+
+/// Raw DTO for the Open-Meteo forecast API response.
+nonisolated struct OpenMeteoResponse: Codable {
+    let current: Current
+    let hourly: Hourly?
+
+    nonisolated struct Current: Codable {
+        let temperature2m: Double
+        let relativeHumidity2m: Int
+        let apparentTemperature: Double
+        let dewPoint2m: Double?
+        let weatherCode: Int
+        let windSpeed10m: Double
+        let windGusts10m: Double?
+        let surfacePressure: Double
+        let cloudCover: Int?
+        let visibility: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case temperature2m = "temperature_2m"
+            case relativeHumidity2m = "relative_humidity_2m"
+            case apparentTemperature = "apparent_temperature"
+            case dewPoint2m = "dew_point_2m"
+            case weatherCode = "weather_code"
+            case windSpeed10m = "wind_speed_10m"
+            case windGusts10m = "wind_gusts_10m"
+            case surfacePressure = "surface_pressure"
+            case cloudCover = "cloud_cover"
+            case visibility
+        }
+    }
+
+    nonisolated struct Hourly: Codable {
+        let precipitationProbability: [Int]?
+        let cape: [Double]?
+
+        enum CodingKeys: String, CodingKey {
+            case precipitationProbability = "precipitation_probability"
+            case cape
+        }
+    }
+}
