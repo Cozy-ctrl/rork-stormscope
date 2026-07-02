@@ -1,8 +1,9 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// iOS-native settings sheet: unit system picker, notifications and
 /// background monitoring, station calibration, data management with
-/// destructive confirmation, and privacy/about details.
+/// destructive confirmation, data export, and privacy/about details.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     let viewModel: DashboardViewModel
@@ -12,6 +13,8 @@ struct SettingsView: View {
     @State private var isConfirmingDelete = false
     @State private var didDeleteData = false
     @State private var didCalibrate = false
+    @State private var isShowingShareSheet = false
+    @State private var exportItem: Any? = nil
 
     var body: some View {
         NavigationStack {
@@ -34,6 +37,11 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                         .fontWeight(.semibold)
                         .tint(Theme.cyan)
+                }
+            }
+            .sheet(isPresented: $isShowingShareSheet) {
+                if let item = exportItem {
+                    ShareSheet(activityItems: [item])
                 }
             }
         }
@@ -278,6 +286,21 @@ struct SettingsView: View {
             }
             .listRowBackground(Theme.panel)
 
+            Button {
+                exportCSV()
+            } label: {
+                Label("Export Pressure Data (CSV)", systemImage: "tablecells")
+            }
+            .disabled(readingsCount == 0)
+            .listRowBackground(Theme.panel)
+
+            Button {
+                exportJSON()
+            } label: {
+                Label("Export Full Report (JSON)", systemImage: "doc.text.fill")
+            }
+            .listRowBackground(Theme.panel)
+
             Button(role: .destructive) {
                 isConfirmingDelete = true
             } label: {
@@ -301,7 +324,7 @@ struct SettingsView: View {
         } header: {
             Text("Data")
         } footer: {
-            Text("StormScope stores your barometer history only on this device. Nothing is uploaded -- deleting removes it permanently.")
+            Text("StormScope stores your barometer history only on this device. Nothing is uploaded — deleting removes it permanently.")
         }
     }
 
@@ -384,33 +407,159 @@ struct SettingsView: View {
             }
 
             Section {
-                Link(destination: URL(string: "https://stormscope.xyz/privacy")!) {
-                    HStack {
-                        Label("Privacy Policy", systemImage: "hand.raised.fill")
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.forward")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                }
-                .listRowBackground(Theme.panel)
-
-                Link(destination: URL(string: "https://stormscope.xyz/terms")!) {
-                    HStack {
-                        Label("Terms of Service", systemImage: "doc.text.fill")
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.forward")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Privacy Policy", systemImage: "hand.raised.fill")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("StormScope does not collect, store, or transmit any personal data. All sensor readings, location data, and AI analysis stay on your device. See the Privacy Nutrition Label above for details required by Apple.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .listRowBackground(Theme.panel)
             } header: {
-                Text("Legal")
+                Text("Privacy & Legal")
+            } footer: {
+                Text("Full privacy policy and terms of service are linked in the App Store listing.")
             }
         }
+    }
+
+    // MARK: - Export
+
+    private func exportCSV() {
+        let readings = viewModel.barometer.readings
+        guard !readings.isEmpty else { return }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var csv = "timestamp,hPa\r\n"
+        for reading in readings {
+            let ts = formatter.string(from: reading.timestamp)
+            csv += "\(ts),\(reading.hPa)\r\n"
+        }
+
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("StormScope_PressureData_\(dateStamp()).csv")
+        try? csv.write(to: fileURL, atomically: true, encoding: .utf8)
+        exportItem = fileURL
+        isShowingShareSheet = true
+    }
+
+    private func exportJSON() {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var dict: [String: Any] = [:]
+        dict["exportedAt"] = formatter.string(from: Date())
+        dict["appVersion"] = appVersion
+
+        // Pressure history
+        dict["pressureReadings"] = viewModel.barometer.readings.map { reading -> [String: Any] in
+            [
+                "timestamp": formatter.string(from: reading.timestamp),
+                "hPa": reading.hPa
+            ]
+        }
+
+        // Current snapshot
+        var snapshot: [String: Any] = [:]
+        if let pressure = viewModel.displayPressure {
+            snapshot["pressure"] = pressure
+            snapshot["pressureUnit"] = viewModel.settings.pressureDisplayMode.shorthand
+            snapshot["isMSLP"] = viewModel.settings.mslpEnabled
+            snapshot["isCalibrated"] = viewModel.settings.isCalibrated
+        }
+        let assessment = viewModel.assessment
+        snapshot["level"] = assessment.level.title
+        if let rate = assessment.ratePerHour {
+            snapshot["ratePerHour"] = rate
+        }
+        if let d1 = assessment.delta1h { snapshot["delta1h"] = d1 }
+        if let d3 = assessment.delta3h { snapshot["delta3h"] = d3 }
+        if let d6 = assessment.delta6h { snapshot["delta6h"] = d6 }
+        dict["assessment"] = snapshot
+
+        // Tornado signature
+        let sig = viewModel.tornadoSignature
+        var tornado: [String: Any] = [
+            "status": "\(sig.status)",
+            "isAtmosphereUnstable": sig.isAtmosphereUnstable
+        ]
+        if let drop = sig.drop10m { tornado["drop10m"] = drop }
+        if let vol = sig.volatility { tornado["volatility"] = vol }
+        dict["tornadoSignature"] = tornado
+
+        // Weather
+        if let weather = viewModel.weather {
+            dict["weather"] = [
+                "temperature": weather.temperature,
+                "apparentTemperature": weather.apparentTemperature,
+                "humidity": weather.humidity,
+                "windSpeed": weather.windSpeed,
+                "windGust": weather.windGust as Any,
+                "windDirection": weather.windDirection as Any,
+                "dewPoint": weather.dewPoint as Any,
+                "cloudCover": weather.cloudCover as Any,
+                "visibility": weather.visibility as Any,
+                "weatherCode": weather.weatherCode,
+                "precipitationNow": weather.precipitationNow as Any,
+                "precipitationLast24h": weather.precipitationLast24h as Any,
+                "cape": weather.cape as Any,
+                "liftedIndex": weather.liftedIndex as Any,
+                "stationPressure": weather.stationPressure,
+                "fetchedAt": formatter.string(from: weather.fetchedAt)
+            ]
+        }
+
+        // Lightning
+        dict["lightning"] = [
+            "strikeCount": viewModel.magnetometer.strikeCount,
+            "estimatedDistanceKm": viewModel.magnetometer.estimatedDistanceKm as Any,
+            "proximity": viewModel.magnetometer.proximityLabel.rawValue
+        ]
+
+        // NWS alerts
+        dict["alerts"] = viewModel.alerts.map { alert -> [String: Any] in
+            [
+                "event": alert.properties.event,
+                "headline": alert.properties.headline ?? "",
+                "severity": alert.properties.severity ?? "",
+                "urgency": alert.properties.urgency ?? "",
+                "expires": alert.properties.expires.map { ISO8601DateFormatter().string(from: $0) } ?? ""
+            ]
+        }
+
+        // Station cross-check
+        if let agreement = viewModel.stationAgreement {
+            dict["stationCrossCheck"] = [
+                "stationCount": agreement.count,
+                "maxAbsDelta": agreement.maxAbsDelta
+            ]
+        }
+        if let gradient = viewModel.pressureGradient {
+            dict["pressureGradient"] = [
+                "towardBearingDeg": gradient.towardLowBearingDeg,
+                "compassLabel": gradient.compassLabel,
+                "magnitudeHPaPer100km": gradient.magnitudeHPaPer100km
+            ]
+        }
+
+        // Serialize
+        guard JSONSerialization.isValidJSONObject(dict),
+              let data = try? JSONSerialization.data(withJSONObject: dict, options: .prettyPrinted) else { return }
+
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("StormScope_FullReport_\(dateStamp()).json")
+        try? data.write(to: fileURL)
+        exportItem = fileURL
+        isShowingShareSheet = true
+    }
+
+    private func dateStamp() -> String {
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd_HHmm"
+        return df.string(from: Date())
     }
 
     private func requestNotificationPermission() {

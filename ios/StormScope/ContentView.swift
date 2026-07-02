@@ -11,6 +11,8 @@ struct ContentView: View {
     @State private var isShowingSettings = false
     @State private var isShowingAlerts = false
     @State private var isShowingDisclaimer = false
+    @State private var isShowingShareSheet = false
+    @State private var shareReportText: String = ""
 
     private var units: UnitSystem {
         viewModel.settings.unitSystem
@@ -231,7 +233,109 @@ struct ContentView: View {
                 onDeleteData: { viewModel.deleteAllData() }
             )
         }
+        .sheet(isPresented: $isShowingShareSheet) {
+            ShareSheet(activityItems: [shareReportText])
+        }
         .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Report
+
+    private func buildReportSnapshot() -> String {
+        StormReportGenerator.plainTextReport(from: StormReportGenerator.Snapshot(
+            date: Date(),
+            formattedDate: Date().formatted(date: .long, time: .shortened),
+            placeName: viewModel.location.placeName,
+            latitude: viewModel.location.latitude,
+            longitude: viewModel.location.longitude,
+            altitude: viewModel.location.altitude,
+            isApproximate: viewModel.location.isApproximate,
+            isSimulated: viewModel.barometer.isSimulated,
+            hasBarometer: DeviceCapability.hasBarometer,
+            pressure: viewModel.displayPressure,
+            pressureUnit: viewModel.settings.pressureDisplayMode.shorthand,
+            isMSLP: viewModel.settings.mslpEnabled,
+            isCalibrated: viewModel.settings.isCalibrated,
+            calibrationStation: viewModel.settings.calibrationStationID,
+            levelTitle: assessment.level.title,
+            ratePerHour: assessment.ratePerHour,
+            delta1h: assessment.delta1h,
+            delta3h: assessment.delta3h,
+            delta6h: assessment.delta6h,
+            escalatedByCorroboration: assessment.escalatedByCorroboration,
+            corroborators: assessment.corroborators,
+            tornadoStatus: tornadoStatusLabel,
+            tornadoDrop10m: viewModel.tornadoSignature.drop10m,
+            tornadoVolatility: viewModel.tornadoSignature.volatility,
+            tornadoUnstable: viewModel.tornadoSignature.isAtmosphereUnstable,
+            tornadoCorroborators: viewModel.tornadoSignature.corroborators,
+            tornadoEscalated: viewModel.tornadoSignature.escalatedByCorroboration,
+            temperature: viewModel.weather?.temperature,
+            apparentTemperature: viewModel.weather?.apparentTemperature,
+            humidity: viewModel.weather?.humidity,
+            windSpeed: viewModel.weather?.windSpeed,
+            windGust: viewModel.weather?.windGust,
+            windDirection: viewModel.weather?.windDirection,
+            dewPoint: viewModel.weather?.dewPoint,
+            visibility: viewModel.weather?.visibility,
+            cloudCover: viewModel.weather?.cloudCover,
+            weatherDescription: viewModel.weather.map { WeatherCode.description($0.weatherCode) },
+            precipitationNow: viewModel.weather?.precipitationNow,
+            precipitationLast24h: viewModel.weather?.precipitationLast24h,
+            cape: viewModel.weather?.cape,
+            liftedIndex: viewModel.weather?.liftedIndex,
+            alertCount: viewModel.alerts.count,
+            hasTornadoWarning: viewModel.hasTornadoWarning,
+            hasTornadoWatch: viewModel.hasTornadoWatch,
+            alertHeadlines: viewModel.alerts.map { $0.properties.headline ?? $0.properties.event },
+            outlookText: viewModel.outlooks.first { $0.day == 1 }.map { "\($0.categoryTitle) — tornado \($0.tornadoProbability ?? 0)%" },
+            strikeCount: viewModel.magnetometer.strikeCount,
+            lastStrikeKm: viewModel.magnetometer.estimatedDistanceKm,
+            proximityLabel: viewModel.magnetometer.proximityLabel.rawValue,
+            lightningEnabled: viewModel.settings.lightningDetectionEnabled,
+            hasMagnetometer: DeviceCapability.hasMagnetometer,
+            stationCount: viewModel.stations.count,
+            stationAgreementVerdict: stationAgreementVerdict,
+            stationMaxDelta: viewModel.stationAgreement?.maxAbsDelta,
+            pressureGradientLabel: viewModel.pressureGradient?.compassLabel,
+            pressureGradientMagnitude: viewModel.pressureGradient?.magnitudeHPaPer100km,
+            confirmationVerdict: viewModel.confirmation?.title,
+            confirmationDetail: viewModel.confirmation?.detail,
+            rainbowVerdict: rainbowVerdictText,
+            rainbowLook: viewModel.rainbowForecast?.lookInstruction,
+            rainbowWrap: viewModel.rainbowForecast?.isWrapIndicatorActive ?? false,
+            radarOffline: !(viewModel.radarStatus?.isOnline ?? true),
+            radarSiteID: viewModel.radarStatus?.id,
+            usesImperial: viewModel.settings.unitSystem == .imperial
+        ))
+    }
+
+    private var tornadoStatusLabel: String {
+        switch viewModel.tornadoSignature.status {
+        case .insufficientData: return "Insufficient Data"
+        case .quiet: return "Quiet"
+        case .elevated: return "Elevated"
+        case .signature: return "Signature Detected"
+        }
+    }
+
+    private var stationAgreementVerdict: String {
+        guard let a = viewModel.stationAgreement else { return "No data" }
+        if a.maxAbsDelta < 1.5 { return "VERIFIED" }
+        if a.maxAbsDelta < 4 { return "DRIFTING" }
+        return "DIVERGENT"
+    }
+
+    private var rainbowVerdictText: String? {
+        guard let f = viewModel.rainbowForecast else { return nil }
+        switch f.verdict {
+        case .likely: return "Likely — look now!"
+        case .possible: return "Possible — keep an eye out"
+        case .sunTooHigh: return "Sun too high (geometric limit)"
+        case .night: return "Nighttime"
+        case .noRain: return "No rain nearby"
+        case .sunObscured: return "Sun obscured by cloud cover"
+        }
     }
 
     // MARK: - Layers
@@ -271,6 +375,16 @@ struct ContentView: View {
                     .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
+                Button {
+                    shareReportText = buildReportSnapshot()
+                    isShowingShareSheet = true
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 21, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Share weather report")
                 Button {
                     isShowingInfo = true
                 } label: {

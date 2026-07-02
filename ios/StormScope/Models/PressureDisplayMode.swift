@@ -137,6 +137,15 @@ nonisolated enum PressureDisplayMode: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Short unit name for reports and exports ("hPa", "inHg", "mmHg").
+    var shorthand: String {
+        switch self {
+        case .hPa, .dual: return "hPa"
+        case .inHg: return "inHg"
+        case .mmHg: return "mmHg"
+        }
+    }
+
     /// Compact gauge dial scale label.
     func gaugeLabel(_ hPa: Double) -> String {
         switch self {
