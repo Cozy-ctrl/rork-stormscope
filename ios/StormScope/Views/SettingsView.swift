@@ -87,6 +87,12 @@ struct SettingsView: View {
             }
             .listRowBackground(Theme.panel)
 
+            Picker("Chart", selection: $settings.chartPressureUnit) {
+                Text("hPa").tag(PressureDisplayMode.hPa)
+                Text("inHg").tag(PressureDisplayMode.inHg)
+            }
+            .listRowBackground(Theme.panel)
+
             Toggle(isOn: $settings.mslpEnabled) {
                 Label("Mean Sea Level Pressure (MSLP)", systemImage: "globe.americas.fill")
             }
@@ -96,9 +102,9 @@ struct SettingsView: View {
             Text("Measurement Units")
         } footer: {
             if settings.mslpEnabled {
-                Text("Pressure is adjusted to sea level using GPS altitude and surface temperature. This makes readings directly comparable to official NWS station reports regardless of your elevation.\n\nTemperature, wind, and distance follow the Metric / Imperial toggle. Pressure units are set independently.")
+                Text("Pressure is adjusted to sea level using GPS altitude and surface temperature. This makes readings directly comparable to official NWS station reports regardless of your elevation.\n\nTemperature, wind, and distance follow the Metric / Imperial toggle. Pressure and chart units are set independently.")
             } else {
-                Text("Station pressure varies with altitude — expect readings ~1.2 hPa lower for every 100 m of elevation. Enable MSLP to normalize to sea level.\n\nTemperature, wind, and distance follow the Metric / Imperial toggle. Pressure units are set independently.")
+                Text("Station pressure varies with altitude — expect readings ~1.2 hPa lower for every 100 m of elevation. Enable MSLP to normalize to sea level.\n\nTemperature, wind, and distance follow the Metric / Imperial toggle. Pressure and chart units are set independently.")
             }
         }
     }

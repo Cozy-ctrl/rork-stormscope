@@ -16,6 +16,7 @@ final class AppSettings {
     private static let calibrationDateKey = "stormscope.settings.calibrationDate"
     private static let lightningDetectionKey = "stormscope.settings.lightningDetection"
     private static let stationsMapExpandedKey = "stormscope.settings.stationsMapExpanded"
+    private static let chartPressureUnitKey = "stormscope.settings.chartPressureUnit"
 
     /// Whether the station map card is currently expanded. Defaults to collapsed
     /// so the dashboard stays compact until the user opens it.
@@ -83,6 +84,13 @@ final class AppSettings {
         }
     }
 
+    /// Which unit the pressure trend chart uses. Independent of the gauge
+    /// display mode so meteorologists can keep the chart in hPa (the global
+    /// standard) even when their spot readout is in inHg. Defaults to hPa.
+    var chartPressureUnit: PressureDisplayMode {
+        didSet { UserDefaults.standard.set(chartPressureUnit.rawValue, forKey: Self.chartPressureUnitKey) }
+    }
+
     /// When enabled, the device magnetometer streams and detects EMP spikes
     /// consistent with nearby lightning strikes. Turn off to save battery or
     /// when the device is in a noisy magnetic environment (near speakers,
@@ -128,6 +136,12 @@ final class AppSettings {
         calibrationOffset = defaults.double(forKey: Self.calibrationOffsetKey)
         calibrationStationID = defaults.string(forKey: Self.calibrationStationKey)
         calibratedAt = defaults.object(forKey: Self.calibrationDateKey) as? Date
+        if let raw = defaults.string(forKey: Self.chartPressureUnitKey),
+           let saved = PressureDisplayMode(rawValue: raw), saved == .hPa || saved == .inHg {
+            chartPressureUnit = saved
+        } else {
+            chartPressureUnit = .hPa
+        }
         lightningDetectionEnabled = defaults.object(forKey: Self.lightningDetectionKey) == nil
             ? true
             : defaults.bool(forKey: Self.lightningDetectionKey)
@@ -159,6 +173,7 @@ final class AppSettings {
         backgroundMonitoringEnabled = false
         lightningDetectionEnabled = true
         stationsMapExpanded = false
+        chartPressureUnit = .hPa
         clearCalibration()
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)
         UserDefaults.standard.removeObject(forKey: Self.pressureUnitKey)

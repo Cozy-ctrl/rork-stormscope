@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A circular aneroid-style barometer gauge with colored risk zones,
 /// tick marks, and an animated needle. Supports dual-unit display (hPa + inHg)
-/// when the user selects that mode.
+/// at equal visual weight when the user selects that mode.
 struct PressureGaugeView: View {
     let pressure: Double?
     let level: StormLevel
@@ -110,20 +110,10 @@ struct PressureGaugeView: View {
     private var readout: some View {
         VStack(spacing: 2) {
             if let pressure {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(pressureMode.primaryString(pressure))
-                        .font(.system(size: pressureMode == .dual ? 36 : 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.textPrimary)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .animation(.default, value: pressure)
-                    if isCalibrated {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.green)
-                            .padding(.top, pressureMode == .dual ? 4 : 8)
-                            .accessibilityLabel("Calibrated to nearest NWS station")
-                    }
+                if pressureMode == .dual {
+                    dualReadout(pressure)
+                } else {
+                    singleReadout(pressure)
                 }
             } else {
                 Text("——")
@@ -131,30 +121,24 @@ struct PressureGaugeView: View {
                     .foregroundStyle(Theme.textTertiary)
             }
 
-            HStack(spacing: 5) {
-                if isMSLP {
-                    Text("MSLP")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .kerning(1)
-                        .foregroundStyle(Theme.cyan)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Theme.cyan.opacity(0.12))
-                        .clipShape(Capsule())
+            if pressureMode != .dual {
+                HStack(spacing: 5) {
+                    if isMSLP {
+                        Text("MSLP")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .kerning(1)
+                            .foregroundStyle(Theme.cyan)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.cyan.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                    Text(pressureMode.primaryUnit)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .textCase(.uppercase)
+                        .kerning(2)
                 }
-                Text(pressureMode.primaryUnit)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Theme.textSecondary)
-                    .textCase(.uppercase)
-                    .kerning(2)
-            }
-
-            if pressureMode == .dual, let pressure {
-                Text(String(format: "%.2f inHg", pressure * 0.029529983))
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Theme.textSecondary.opacity(0.8))
-                    .monospacedDigit()
-                    .padding(.top, 1)
             }
 
             if let ratePerHour {
@@ -169,6 +153,77 @@ struct PressureGaugeView: View {
             }
         }
         .offset(y: 76)
+    }
+
+    // MARK: - Readout variants
+
+    /// Single-unit readout with optional MSLP and calibration badge.
+    private func singleReadout(_ pressure: Double) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(pressureMode.primaryString(pressure))
+                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(.default, value: pressure)
+            if isCalibrated {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.green)
+                    .padding(.top, 8)
+                    .accessibilityLabel("Calibrated to nearest NWS station")
+            }
+        }
+    }
+
+    /// Dual readout showing hPa and inHg at equal visual weight, side by side.
+    private func dualReadout(_ pressure: Double) -> some View {
+        let inHgValue = pressure * 0.029529983
+        return VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                if isCalibrated {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.green)
+                        .accessibilityLabel("Calibrated to nearest NWS station")
+                }
+                if isMSLP {
+                    Text("MSLP")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .kerning(1)
+                        .foregroundStyle(Theme.cyan)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(Theme.cyan.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                VStack(spacing: 0) {
+                    Text(String(format: "%.1f", pressure))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text("hPa")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .kerning(1.5)
+                }
+                VStack(spacing: 0) {
+                    Text(String(format: "%.2f", inHgValue))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.textPrimary)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text("inHg")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.textSecondary)
+                        .kerning(1.5)
+                }
+            }
+        }
+        .animation(.default, value: pressure)
     }
 
     private var accessibilityText: String {
