@@ -34,10 +34,14 @@ nonisolated struct OpenMeteoResponse: Codable {
     nonisolated struct Hourly: Codable {
         let precipitationProbability: [Int]?
         let cape: [Double]?
+        /// Element type is optional because Open-Meteo returns null for hours
+        /// where the stability model has no value.
+        let liftedIndex: [Double?]?
 
         enum CodingKeys: String, CodingKey {
             case precipitationProbability = "precipitation_probability"
             case cape
+            case liftedIndex = "lifted_index"
         }
     }
 }

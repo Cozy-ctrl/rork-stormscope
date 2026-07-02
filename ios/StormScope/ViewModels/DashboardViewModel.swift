@@ -16,6 +16,7 @@ final class DashboardViewModel {
     private let alertsService = AlertsService()
     private let stationsService = StationsService()
     private let outlookService = OutlookService()
+    private let radarStatusService = RadarStatusService()
     private var monitorTask: Task<Void, Never>?
 
     private(set) var weather: WeatherSnapshot?
@@ -32,6 +33,9 @@ final class DashboardViewModel {
 
     private(set) var outlooks: [SPCOutlook] = []
     private(set) var isLoadingOutlook = false
+
+    /// Health of the nearest NEXRAD site; nil while unknown or on lookup failure.
+    private(set) var radarStatus: RadarSiteStatus?
 
     var isTornadoModeEnabled: Bool = UserDefaults.standard.bool(forKey: "stormscope.tornadoMode") {
         didSet { UserDefaults.standard.set(isTornadoModeEnabled, forKey: "stormscope.tornadoMode") }
@@ -81,7 +85,11 @@ final class DashboardViewModel {
     }
 
     var tornadoSignature: TornadoSignature {
-        TornadoSignature.analyze(readings: barometer.readings)
+        TornadoSignature.analyze(
+            readings: barometer.readings,
+            cape: weather?.cape,
+            liftedIndex: weather?.liftedIndex
+        )
     }
 
     var hasTornadoWarning: Bool {
@@ -150,6 +158,9 @@ final class DashboardViewModel {
             }
             if let cape = weather.cape {
                 weatherLine += ", CAPE \(Int(cape)) J/kg"
+            }
+            if let liftedIndex = weather.liftedIndex {
+                weatherLine += String(format: ", Lifted Index %.1f", liftedIndex)
             }
             if let gusts = weather.windGust {
                 weatherLine += String(format: ", gusts %.0f km/h", gusts)
@@ -229,7 +240,8 @@ final class DashboardViewModel {
         async let alertsTask: Void = refreshAlerts()
         async let stationsTask: Void = refreshStations()
         async let outlookTask: Void = refreshOutlook()
-        _ = await (weatherTask, alertsTask, stationsTask, outlookTask)
+        async let radarStatusTask: Void = refreshRadarStatus()
+        _ = await (weatherTask, alertsTask, stationsTask, outlookTask, radarStatusTask)
         await notifier.evaluate(
             assessment: assessment,
             alerts: alerts,
@@ -362,6 +374,11 @@ final class DashboardViewModel {
         isLoadingOutlook = true
         outlooks = await outlookService.fetchOutlooks(latitude: lat, longitude: lon)
         isLoadingOutlook = false
+    }
+
+    func refreshRadarStatus() async {
+        guard let lat = location.latitude, let lon = location.longitude else { return }
+        radarStatus = await radarStatusService.fetchStatus(latitude: lat, longitude: lon)
     }
 
     func refreshStations() async {

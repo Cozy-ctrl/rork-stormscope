@@ -25,7 +25,8 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
+        @Bindable var settings = viewModel.settings
+        return ZStack {
             background
             ScrollView {
                 VStack(spacing: 18) {
@@ -56,7 +57,9 @@ struct ContentView: View {
                     RadarCardView(
                         latitude: viewModel.location.latitude,
                         longitude: viewModel.location.longitude,
-                        alerts: viewModel.alerts
+                        alerts: viewModel.alerts,
+                        layerMode: $settings.radarLayerMode,
+                        radarStatus: viewModel.radarStatus
                     )
                     OutlookCardView(
                         outlooks: viewModel.outlooks,
@@ -218,6 +221,17 @@ struct ContentView: View {
                 .accessibilityLabel("Settings")
             }
 
+            if viewModel.location.isApproximate {
+                HStack(spacing: 6) {
+                    Image(systemName: "wifi")
+                        .font(.system(size: 9))
+                    Text("Network-based location — enable Location access for precise data.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(Theme.amber.opacity(0.9))
+            }
+
             HStack(spacing: 8) {
                 sensorChip
                 if let altitude = viewModel.location.altitude {
@@ -314,6 +328,7 @@ struct ContentView: View {
 
     private var locationLabel: String {
         if let name = viewModel.location.placeName {
+            if viewModel.location.isApproximate { return "\(name) (approximate)" }
             return viewModel.location.isFallback ? "\(name) (default)" : name
         }
         return "Locating…"

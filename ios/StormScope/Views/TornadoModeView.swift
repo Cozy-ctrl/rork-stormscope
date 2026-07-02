@@ -68,6 +68,18 @@ struct TornadoModeView: View {
                     metricTile(label: "NWS", value: nwsStatus)
                 }
 
+                if signature.isAtmosphereUnstable {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.orange)
+                        Text("Unstable atmosphere (CAPE / Lifted Index) — pressure-drop thresholds are tightened.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.orange.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 if isSimulated {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")

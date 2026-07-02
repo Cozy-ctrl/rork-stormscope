@@ -7,6 +7,7 @@ final class AppSettings {
     private static let unitsKey = "stormscope.settings.units"
     private static let pressureUnitKey = "stormscope.settings.pressureUnit"
     private static let mslpEnabledKey = "stormscope.settings.mslpEnabled"
+    private static let radarLayerModeKey = "stormscope.settings.radarLayerMode"
     private static let stormNotificationsKey = "stormscope.settings.stormNotifications"
     private static let tornadoAlertsKey = "stormscope.settings.tornadoAlerts"
     private static let backgroundMonitoringKey = "stormscope.settings.backgroundMonitoring"
@@ -30,6 +31,11 @@ final class AppSettings {
     /// also sea-level-corrected) regardless of the user's elevation.
     var mslpEnabled: Bool {
         didSet { UserDefaults.standard.set(mslpEnabled, forKey: Self.mslpEnabledKey) }
+    }
+
+    /// Which imagery layers the radar map draws (radar, satellite, or both).
+    var radarLayerMode: RadarLayerMode {
+        didSet { UserDefaults.standard.set(radarLayerMode.rawValue, forKey: Self.radarLayerModeKey) }
     }
 
     /// Notify when the pressure trend escalates to Storm Watch / Front Imminent.
@@ -93,6 +99,12 @@ final class AppSettings {
         } else {
             pressureDisplayMode = Locale.current.measurementSystem == .us ? .inHg : .hPa
         }
+        if let raw = defaults.string(forKey: Self.radarLayerModeKey),
+           let saved = RadarLayerMode(rawValue: raw) {
+            radarLayerMode = saved
+        } else {
+            radarLayerMode = .radar
+        }
         stormNotificationsEnabled = defaults.bool(forKey: Self.stormNotificationsKey)
         tornadoAlertsEnabled = defaults.bool(forKey: Self.tornadoAlertsKey)
         backgroundMonitoringEnabled = defaults.bool(forKey: Self.backgroundMonitoringKey)
@@ -121,6 +133,7 @@ final class AppSettings {
         unitSystem = Locale.current.measurementSystem == .us ? .imperial : .metric
         pressureDisplayMode = Locale.current.measurementSystem == .us ? .inHg : .hPa
         mslpEnabled = false
+        radarLayerMode = .radar
         stormNotificationsEnabled = false
         tornadoAlertsEnabled = false
         backgroundMonitoringEnabled = false
@@ -128,5 +141,6 @@ final class AppSettings {
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)
         UserDefaults.standard.removeObject(forKey: Self.pressureUnitKey)
         UserDefaults.standard.removeObject(forKey: Self.mslpEnabledKey)
+        UserDefaults.standard.removeObject(forKey: Self.radarLayerModeKey)
     }
 }

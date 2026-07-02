@@ -31,7 +31,7 @@ nonisolated struct WeatherService {
                 "cloud_cover",
                 "visibility",
             ].joined(separator: ",")),
-            URLQueryItem(name: "hourly", value: "precipitation_probability,cape"),
+            URLQueryItem(name: "hourly", value: "precipitation_probability,cape,lifted_index"),
             URLQueryItem(name: "forecast_hours", value: "6"),
             URLQueryItem(name: "timezone", value: "auto"),
         ]
@@ -45,6 +45,8 @@ nonisolated struct WeatherService {
         let decoded = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
         let rainChance = decoded.hourly?.precipitationProbability?.max()
         let capeMax = decoded.hourly?.cape?.max()
+        // Most negative Lifted Index over the next 6 hours = most unstable.
+        let liftedIndexMin = decoded.hourly?.liftedIndex?.compactMap { $0 }.min()
 
         return WeatherSnapshot(
             temperature: decoded.current.temperature2m,
@@ -56,6 +58,7 @@ nonisolated struct WeatherService {
             cloudCover: decoded.current.cloudCover,
             visibility: decoded.current.visibility,
             cape: capeMax,
+            liftedIndex: liftedIndexMin,
             stationPressure: decoded.current.surfacePressure,
             weatherCode: decoded.current.weatherCode,
             maxRainChance: rainChance,

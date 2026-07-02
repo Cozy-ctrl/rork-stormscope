@@ -17,6 +17,19 @@ final class RadarTileOverlay: MKTileOverlay {
     }
 }
 
+/// GOES infrared cloud-top tiles from the Iowa Environmental Mesonet.
+/// East vs. West satellite is chosen by the map center's longitude so the
+/// Rockies and westward get the better viewing angle.
+final class SatelliteTileOverlay: MKTileOverlay {
+    init(centerLongitude: Double) {
+        let layer = centerLongitude < -105 ? "goes_west_conus_ch13" : "goes_east_conus_ch13"
+        let template = "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/\(layer)/{z}/{x}/{y}.png"
+        super.init(urlTemplate: template)
+        canReplaceMapContent = false
+        tileSize = CGSize(width: 256, height: 256)
+    }
+}
+
 /// MKPolygon subclass that remembers which NWS alert it belongs to so taps
 /// can surface the warning text. Marked nonisolated because it is a pure
 /// data carrier for MapKit with no UI work — it's created on the main actor
@@ -32,6 +45,7 @@ nonisolated final class WarningPolygon: MKPolygon {
 struct RadarMapRepresentable: UIViewRepresentable {
     let center: CLLocationCoordinate2D
     let frameSuffix: String
+    let layerMode: RadarLayerMode
     let alerts: [NWSAlertFeature]
     let onSelectAlert: (NWSAlertFeature) -> Void
     /// Called when tile fetching starts for a new frame (true) and when the
@@ -65,7 +79,8 @@ struct RadarMapRepresentable: UIViewRepresentable {
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.parent = self
-        context.coordinator.syncRadarFrame(on: mapView, suffix: frameSuffix)
+        context.coordinator.syncSatellite(on: mapView, mode: layerMode, centerLongitude: center.longitude)
+        context.coordinator.syncRadarFrame(on: mapView, suffix: frameSuffix, mode: layerMode)
         context.coordinator.syncPolygons(on: mapView, alerts: alerts)
         context.coordinator.recenterIfNeeded(on: mapView, center: center)
     }
@@ -83,7 +98,32 @@ struct RadarMapRepresentable: UIViewRepresentable {
             self.parent = parent
         }
 
-        func syncRadarFrame(on mapView: MKMapView, suffix: String) {
+        /// Adds or removes the GOES layer beneath everything else. The
+        /// overlay is rebuilt when the map center crosses the East/West
+        /// satellite boundary.
+        func syncSatellite(on mapView: MKMapView, mode: RadarLayerMode, centerLongitude: Double) {
+            let existing = mapView.overlays.compactMap { $0 as? SatelliteTileOverlay }
+            if mode.showsSatellite {
+                if existing.isEmpty {
+                    mapView.insertOverlay(SatelliteTileOverlay(centerLongitude: centerLongitude), at: 0)
+                }
+            } else if !existing.isEmpty {
+                mapView.removeOverlays(existing)
+            }
+        }
+
+        func syncRadarFrame(on mapView: MKMapView, suffix: String, mode: RadarLayerMode) {
+            guard mode.showsRadar else {
+                // Satellite-only: clear any radar tiles and reset frame state
+                // so re-enabling radar re-adds the current frame.
+                pendingStaleRemoval?.cancel()
+                let radarOverlays = mapView.overlays.compactMap { $0 as? RadarTileOverlay }
+                if !radarOverlays.isEmpty {
+                    mapView.removeOverlays(radarOverlays)
+                }
+                currentSuffix = nil
+                return
+            }
             guard suffix != currentSuffix else { return }
             currentSuffix = suffix
 
@@ -169,6 +209,11 @@ struct RadarMapRepresentable: UIViewRepresentable {
         // MARK: - MKMapViewDelegate
 
         nonisolated func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let satellite = overlay as? SatelliteTileOverlay {
+                let renderer = MKTileOverlayRenderer(tileOverlay: satellite)
+                renderer.alpha = 0.82
+                return renderer
+            }
             if let tile = overlay as? MKTileOverlay {
                 let renderer = MKTileOverlayRenderer(tileOverlay: tile)
                 renderer.alpha = 0.72

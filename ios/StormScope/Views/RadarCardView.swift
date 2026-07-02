@@ -7,6 +7,8 @@ struct RadarCardView: View {
     let latitude: Double?
     let longitude: Double?
     let alerts: [NWSAlertFeature]
+    @Binding var layerMode: RadarLayerMode
+    var radarStatus: RadarSiteStatus?
 
     /// Frame 0 is the oldest (-50 min); the last frame is live.
     private static let frameSuffixes: [String] = [
@@ -25,7 +27,15 @@ struct RadarCardView: View {
 
             if let latitude, let longitude {
                 map(center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
-                scrubber
+                layerPicker
+                if layerMode.showsRadar {
+                    scrubber
+                } else {
+                    satelliteCaption
+                }
+                if let radarStatus, !radarStatus.isOnline {
+                    radarOfflineNotice(radarStatus)
+                }
             } else {
                 HStack(spacing: 10) {
                     ProgressView()
@@ -56,14 +66,15 @@ struct RadarCardView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "cloud.rain.circle.fill")
+            Image(systemName: layerMode == .satellite ? "cloud.circle.fill" : "cloud.rain.circle.fill")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Theme.cyan)
-            Text("Live Radar")
+            Text(headerTitle)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
             Spacer()
-            Text(frameLabel)
+            if layerMode.showsRadar {
+                Text(frameLabel)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isLiveFrame ? Theme.green : Theme.amber)
@@ -71,7 +82,78 @@ struct RadarCardView: View {
                 .padding(.vertical, 3)
                 .background((isLiveFrame ? Theme.green : Theme.amber).opacity(0.12))
                 .clipShape(Capsule())
+            } else {
+                Text("LIVE IR")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.green)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.green.opacity(0.12))
+                    .clipShape(Capsule())
+            }
         }
+    }
+
+    private var headerTitle: String {
+        switch layerMode {
+        case .radar: return "Live Radar"
+        case .satellite: return "Satellite"
+        case .both: return "Radar + Satellite"
+        }
+    }
+
+    private var layerPicker: some View {
+        HStack(spacing: 6) {
+            ForEach(RadarLayerMode.allCases) { mode in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        layerMode = mode
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(mode.title)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(layerMode == mode ? Theme.ink : Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                    .background(layerMode == mode ? Theme.cyan : Color.white.opacity(0.05))
+                    .clipShape(Capsule())
+                }
+                .accessibilityLabel("Show \(mode.title) layer")
+            }
+        }
+        .sensoryFeedback(.selection, trigger: layerMode)
+    }
+
+    private var satelliteCaption: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "thermometer.snowflake")
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.cyan)
+            Text("GOES infrared cloud tops — brighter (colder) tops signal strengthening storms.")
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func radarOfflineNotice(_ status: RadarSiteStatus) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.amber)
+            Text("Nearest radar site K\(status.id) (\(status.name)) appears offline — imagery shown is from neighboring sites.")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.amber.opacity(0.9))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.amber.opacity(0.08))
+        .clipShape(.rect(cornerRadius: 10))
     }
 
     private func map(center: CLLocationCoordinate2D) -> some View {
@@ -82,6 +164,7 @@ struct RadarCardView: View {
                     RadarMapRepresentable(
                         center: center,
                         frameSuffix: Self.frameSuffixes[Int(frameIndex)],
+                        layerMode: layerMode,
                         alerts: alerts,
                         onSelectAlert: { alert in
                             selectedAlert = alert
@@ -209,7 +292,13 @@ struct RadarCardView: View {
 #Preview {
     ZStack {
         Theme.ink.ignoresSafeArea()
-        RadarCardView(latitude: 35.4676, longitude: -97.5164, alerts: [])
-            .padding()
+        RadarCardView(
+            latitude: 35.4676,
+            longitude: -97.5164,
+            alerts: [],
+            layerMode: .constant(.both),
+            radarStatus: RadarSiteStatus(id: "TLX", name: "Oklahoma City", isOnline: false, checkedAt: Date())
+        )
+        .padding()
     }
 }

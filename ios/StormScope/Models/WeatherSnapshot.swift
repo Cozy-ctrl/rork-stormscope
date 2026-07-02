@@ -18,6 +18,9 @@ nonisolated struct WeatherSnapshot {
     /// severe thunderstorm potential. Values above 1000 indicate moderate
     /// instability; above 2500 extreme.
     let cape: Double?
+    /// Lifted Index (°C) — negative values indicate instability. Below -4 is
+    /// unstable; below -6 signals very high severe-storm potential.
+    let liftedIndex: Double?
     /// Station-level surface pressure reported by the nearest weather model, in hPa.
     let stationPressure: Double
     let weatherCode: Int

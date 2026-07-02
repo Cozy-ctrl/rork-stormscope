@@ -41,6 +41,7 @@ struct WeatherStripView: View {
                     statTile(icon: "umbrella.fill", label: "Rain 6h", value: weather.maxRainChance.map { "\($0)%" } ?? "—")
                     statTile(icon: "eye.fill", label: "Vis", value: weather.visibility.map { units.visibility($0) } ?? "—")
                     statTile(icon: "flame.fill", label: "CAPE", value: weather.cape.map { "\(Int($0)) J/kg" } ?? "—")
+                    statTile(icon: "arrow.up.and.down.circle", label: "Lifted Idx", value: weather.liftedIndex.map { String(format: "%.1f", $0) } ?? "—")
                     statTile(icon: "building.columns", label: "Model", value: pressureMode.labeled(weather.stationPressure))
                 }
 
@@ -67,6 +68,20 @@ struct WeatherStripView: View {
                             .foregroundStyle(Theme.textSecondary)
                             + Text(capeSeverityLabel(cape))
                             .foregroundStyle(capeSeverityColor(cape))
+                            .fontWeight(.semibold)
+                    }
+                    .font(.system(size: 11, design: .rounded))
+                }
+
+                if let liftedIndex = weather.liftedIndex {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.up.and.down.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(stabilityColor(liftedIndex))
+                        Text(String(format: "Lifted Index %.1f: ", liftedIndex))
+                            .foregroundStyle(Theme.textSecondary)
+                            + Text(stabilityLabel(liftedIndex))
+                            .foregroundStyle(stabilityColor(liftedIndex))
                             .fontWeight(.semibold)
                     }
                     .font(.system(size: 11, design: .rounded))
@@ -155,6 +170,23 @@ struct WeatherStripView: View {
         return " · Dry"
     }
 
+    // MARK: - Lifted Index interpretation
+
+    private func stabilityLabel(_ liftedIndex: Double) -> String {
+        if liftedIndex <= -6 { return "Very unstable — severe storms likely" }
+        if liftedIndex <= -4 { return "Unstable — storms probable" }
+        if liftedIndex <= -2 { return "Marginally unstable" }
+        if liftedIndex <= 0 { return "Marginal" }
+        return "Stable"
+    }
+
+    private func stabilityColor(_ liftedIndex: Double) -> Color {
+        if liftedIndex <= -6 { return Theme.red }
+        if liftedIndex <= -4 { return Theme.orange }
+        if liftedIndex <= -2 { return Theme.amber }
+        return Theme.green
+    }
+
     // MARK: - CAPE interpretation
 
     private func capeSeverityLabel(_ cape: Double) -> String {
@@ -191,6 +223,7 @@ struct WeatherStripView: View {
         cloudCover: 75,
         visibility: 8000,
         cape: 2800,
+        liftedIndex: -5.5,
         stationPressure: 1012.0,
         weatherCode: 3,
         maxRainChance: 40,
