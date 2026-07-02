@@ -18,8 +18,12 @@ struct InfoSheetView: View {
                     tornadoSection
                     alertsSection
                     mapSection
+                    velocityRadarSection
                     outlookSection
                     stationsSection
+                    stationsMapSection
+                    stationObservedSection
+                    eventConfirmationSection
                     aiSection
                     ipSection
                     tipsSection
@@ -310,6 +314,98 @@ struct InfoSheetView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("One-tap calibration in Settings aligns your device barometer to the nearest reporting station, zeroing out factory variance between devices. The calibration offset is additive and does not affect trend analysis (a constant offset cancels out in change calculations). When MSLP is enabled, both the device and the station report on the same sea-level plane, so the offset reflects only sensor drift \u{2014} typically less than 0.5 hPa.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Station map & comparison
+
+    private var stationsMapSection: some View {
+        section(
+            icon: "map.fill",
+            title: "Station Map & Comparison Charts",
+            tint: Theme.cyan
+        ) {
+            Text("The Station Map places every NWS observation site around you on a satellite map. Pin colour shows pressure agreement with your device (green = close, orange/red = a gradient is present). Switch to the Dew Point view to see moisture distribution — a sharp dry-to-moist boundary between nearby stations is a dryline, a classic storm-initiation trigger.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The Station Comparison chart lets you pick any measured quantity — pressure, temperature, dew point, wind speed, or humidity — and see it as interactive bars ordered by distance. Gradient callouts flag notable spreads between stations that may signal fronts, outflow boundaries, or drylines.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Tapping a bar highlights that station\u{2019}s exact value and provides haptic feedback. The pressure chart includes a dashed \u{201C}You\u{201D} rule so you can spot your sensor against every station at once. Both cards collapse by default and remember their expand/collapse state.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Observed wind & precipitation
+
+    private var stationObservedSection: some View {
+        section(
+            icon: "wind.circle.fill",
+            title: "Observed Wind & Precipitation",
+            tint: Theme.green
+        ) {
+            Text("The Observed Wind card shows real anemometer data from the nearest reporting NWS station — not forecast-model output. A compass dial displays wind direction; readouts show sustained speed and gusts. The card also compares observed wind against the weather model, flagging when the forecast is off by more than 15 km/h or when wind direction differs by over 45\u{00B0} (a sign of a real front or boundary).")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The Precipitation card combines three data sources: the weather model\u{2019}s current rain rate, the nearest station\u{2019}s rain gauge reading for the last hour, and the 24-hour storm total. Heavy-rain callouts follow standard NWS intensity thresholds (rate \u{2265} 7.6 mm/h, 24h total \u{2265} 50 mm). When everything is dry, the card collapses to a single quiet line.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Station-observed data is labelled \u{201C}STATION DATA\u{201D} or \u{201C}GAUGE + MODEL\u{201D} so you always know whether the number is a real measurement or a model estimate.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Event confirmation
+
+    private var eventConfirmationSection: some View {
+        section(
+            icon: "bolt.horizontal.circle",
+            title: "Extreme Event Confirmation",
+            tint: Theme.orange
+        ) {
+            Text("When the device barometer detects a rapid pressure drop at Storm Watch / Front Imminent level, or the tornado signature activates, the app automatically enters rapid polling mode. It re-checks nearby NWS stations every 5 minutes (instead of waiting for a pull-to-refresh) and compares each station\u{2019}s hour-over-hour pressure trend against your device signal.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("ASOS stations issue special reports (SPECI) during rapid pressure changes, so frequent polling catches them early. The verdict card shows you whether multiple stations confirm the same fall (regional event), only some do (system moving in), or stations are steady (your drop may be hyper-local or sensor noise). The on-device AI briefing incorporates this verdict when active.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Rapid polling stops automatically when the extreme event clears. The dashboard never pushes notifications based on an unconfirmed signal — it always waits for station cross-validation first.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Velocity radar
+
+    private var velocityRadarSection: some View {
+        section(
+            icon: "arrow.left.arrow.right.circle.fill",
+            title: "Velocity Radar",
+            tint: Theme.cyan
+        ) {
+            Text("In addition to reflectivity radar, the map layer toggle offers a Storm Relative Velocity product from the nearest NEXRAD site. Green pixels indicate motion toward the radar; red pixels indicate motion away. A tight green/red couplet side by side — the classic velocity signature of rotation — can reveal a developing mesocyclone before reflectivity shows a hook echo.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Velocity data comes from single-site RIDGE tiles (Iowa Environmental Mesonet). The site is auto-selected as the nearest reporting NEXRAD to your location. Satellite and radar layers are independent — you can view any combination with the layered map controls.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Velocity imagery has the same 5\u{2013}15 minute delay as reflectivity and should not be used for minute-by-minute tornado confirmation. It is one additional data point alongside reflectivity, satellite, and surface observations.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)

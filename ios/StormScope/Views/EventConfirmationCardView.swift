@@ -51,14 +51,14 @@ struct EventConfirmationCardView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(Theme.red)
+                .fill(verdictTint)
                 .frame(width: 8, height: 8)
                 .opacity(isPulsing ? 0.25 : 1)
                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: isPulsing)
             Text("SIGNAL CONFIRMATION")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .kerning(1.2)
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(verdictTint)
             Spacer()
             Button {
                 onCheckNow()
