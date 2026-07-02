@@ -50,7 +50,35 @@ final class DashboardViewModel {
     }
 
     var assessment: StormAssessment {
-        StormAssessment.assess(readings: barometer.readings)
+        StormAssessment.assess(readings: barometer.readings, corroborators: stormCorroborators)
+    }
+
+    /// Strongest gust observed at any nearby NWS station, in km/h.
+    var maxObservedGustKmh: Double? {
+        stations.compactMap { $0.windGustKmh ?? $0.windSpeedKmh }.max()
+    }
+
+    /// Independent live signals that corroborate a barometric storm trend.
+    /// Two or more let a borderline "Falling" escalate to "Storm Likely" one
+    /// tier early — the advance-notice fusion at the heart of the app.
+    private var stormCorroborators: [String] {
+        var list: [String] = []
+        if magnetometer.strikeCount >= 3 {
+            list.append("close-range lightning (\(magnetometer.strikeCount) strikes/hr)")
+        }
+        if let gust = maxObservedGustKmh, gust >= 60 {
+            list.append(String(format: "station gusts %.0f km/h", gust))
+        }
+        if let rate = weather?.precipitationNow, rate >= 7.5 {
+            list.append(String(format: "heavy rain %.1f mm/h", rate))
+        }
+        if let confirmation, confirmation.verdict == .confirmed {
+            list.append("\(confirmation.fallingCount) NWS stations falling in step")
+        }
+        if alerts.contains(where: { $0.properties.event.localizedCaseInsensitiveContains("severe thunderstorm") }) {
+            list.append("Severe Thunderstorm alert active")
+        }
+        return list
     }
 
     /// MSLP-corrected pressure when enabled, otherwise station pressure.
@@ -96,7 +124,11 @@ final class DashboardViewModel {
         TornadoSignature.analyze(
             readings: barometer.readings,
             cape: weather?.cape,
-            liftedIndex: weather?.liftedIndex
+            liftedIndex: weather?.liftedIndex,
+            lightningStrikeCount: magnetometer.strikeCount,
+            observedGustKmh: maxObservedGustKmh,
+            spcTornadoProbability: outlooks.first { $0.day == 1 }?.tornadoProbability,
+            hasTornadoWatch: hasTornadoWatch
         )
     }
 
@@ -209,6 +241,12 @@ final class DashboardViewModel {
         if isTornadoModeEnabled, let drop = tornadoSignature.drop10m {
             parts.append(String(format: "10-minute change: %+.2f hPa (tornado signature mode)", drop))
         }
+        if assessment.escalatedByCorroboration {
+            parts.append("Storm level was raised one tier EARLY because independent signals corroborate the pressure fall: \(assessment.corroborators.joined(separator: ", ")).")
+        }
+        if tornadoSignature.escalatedByCorroboration {
+            parts.append("Tornado signature status was raised one tier EARLY by corroborating signals: \(tornadoSignature.corroborators.joined(separator: ", ")).")
+        }
         if hasTornadoWarning {
             parts.append("An official NWS Tornado Warning is ACTIVE for this location.")
         } else if hasTornadoWatch {
@@ -299,7 +337,8 @@ final class DashboardViewModel {
         } else {
             agreement = "none"
         }
-        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)|\(lightning)|\(agreement)"
+        let corroboration = "\(assessment.corroborators.count)-\(tornadoSignature.corroborators.count)"
+        return "\(assessment.level.rawValue)|\(rateBucket)|\(tornado)|\(weather != nil)|\(outlook)|\(lightning)|\(agreement)|\(corroboration)"
     }
 
     func start() {

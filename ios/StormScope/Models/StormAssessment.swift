@@ -14,16 +14,28 @@ nonisolated struct StormAssessment {
     let delta3h: Double?
     /// Pressure change over roughly the last six hours, in hPa.
     let delta6h: Double?
+    /// Independent live signals that corroborate the barometric trend
+    /// (lightning, official station falls, heavy rain, station gusts).
+    let corroborators: [String]
+    /// True when the level was raised one tier because 2+ corroborating
+    /// signals agreed with a borderline barometric fall.
+    let escalatedByCorroboration: Bool
     let level: StormLevel
 
-    static func assess(readings: [PressureReading], now: Date = Date()) -> StormAssessment {
+    /// Assesses the barometric trend, optionally fused with independent
+    /// corroborating signals supplied by the caller (as human-readable
+    /// reason strings). With two or more corroborators, a borderline
+    /// "Falling" reading escalates to "Storm Likely" — giving users the
+    /// earliest defensible heads-up rather than waiting for the barometer
+    /// alone to cross the hard threshold.
+    static func assess(readings: [PressureReading], corroborators: [String] = [], now: Date = Date()) -> StormAssessment {
         let rate = hourlySlope(of: readings, now: now)
         let d1 = delta(in: readings, hoursAgo: 1, now: now)
         let d3 = delta(in: readings, hoursAgo: 3, now: now)
         let d6 = delta(in: readings, hoursAgo: 6, now: now)
 
         guard let rate else {
-            return StormAssessment(ratePerHour: nil, delta1h: d1, delta3h: d3, delta6h: d6, level: .collecting)
+            return StormAssessment(ratePerHour: nil, delta1h: d1, delta3h: d3, delta6h: d6, corroborators: corroborators, escalatedByCorroboration: false, level: .collecting)
         }
 
         var level: StormLevel
@@ -46,7 +58,17 @@ nonisolated struct StormAssessment {
             level = .stormLikely
         }
 
-        return StormAssessment(ratePerHour: rate, delta1h: d1, delta3h: d3, delta6h: d6, level: level)
+        // Corroboration escalation: a genuine barometric fall backed by 2+
+        // independent live signals is upgraded one tier early. Only applies
+        // to real falls (rate ≤ -1.0 hPa/h) and never fabricates a level
+        // from a steady barometer, so a calm day can't be escalated.
+        var escalated = false
+        if corroborators.count >= 2, level == .falling, rate <= -1.0 {
+            level = .stormLikely
+            escalated = true
+        }
+
+        return StormAssessment(ratePerHour: rate, delta1h: d1, delta3h: d3, delta6h: d6, corroborators: corroborators, escalatedByCorroboration: escalated, level: level)
     }
 
     /// Least-squares linear regression slope over the last 60 minutes,

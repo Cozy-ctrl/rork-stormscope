@@ -68,6 +68,18 @@ struct TornadoModeView: View {
                     metricTile(label: "NWS", value: nwsStatus)
                 }
 
+                if !signature.corroborators.isEmpty {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(signature.escalatedByCorroboration ? Theme.red : Theme.amber)
+                        Text(corroborationText)
+                            .font(.system(size: 10))
+                            .foregroundStyle((signature.escalatedByCorroboration ? Theme.red : Theme.amber).opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 if signature.isAtmosphereUnstable {
                     HStack(spacing: 6) {
                         Image(systemName: "flame.fill")
@@ -157,6 +169,14 @@ struct TornadoModeView: View {
             return "Building a 10-minute sample window. Signature analysis starts after a few minutes of readings."
         }
         return "No abrupt micro-drops in the last 10 minutes and no tornado alerts for your area."
+    }
+
+    private var corroborationText: String {
+        let joined = signature.corroborators.joined(separator: " · ")
+        if signature.escalatedByCorroboration {
+            return "Status raised early — corroborated by: \(joined)"
+        }
+        return "Corroborating signals: \(joined)"
     }
 
     private var nwsStatus: String {
