@@ -16,12 +16,19 @@ final class AppSettings {
     private static let calibrationDateKey = "stormscope.settings.calibrationDate"
     private static let lightningDetectionKey = "stormscope.settings.lightningDetection"
     private static let stationsMapExpandedKey = "stormscope.settings.stationsMapExpanded"
+    private static let stationsListExpandedKey = "stormscope.settings.stationsListExpanded"
     private static let chartPressureUnitKey = "stormscope.settings.chartPressureUnit"
 
     /// Whether the station map card is currently expanded. Defaults to collapsed
     /// so the dashboard stays compact until the user opens it.
     var stationsMapExpanded: Bool {
         didSet { UserDefaults.standard.set(stationsMapExpanded, forKey: Self.stationsMapExpandedKey) }
+    }
+
+    /// Whether the station list card is expanded. Collapsed by default so the
+    /// detailed station rows do not dominate the dashboard until requested.
+    var stationsListExpanded: Bool {
+        didSet { UserDefaults.standard.set(stationsListExpanded, forKey: Self.stationsListExpandedKey) }
     }
 
     var unitSystem: UnitSystem {
@@ -146,6 +153,7 @@ final class AppSettings {
             ? true
             : defaults.bool(forKey: Self.lightningDetectionKey)
         stationsMapExpanded = defaults.bool(forKey: Self.stationsMapExpandedKey)
+        stationsListExpanded = defaults.bool(forKey: Self.stationsListExpandedKey)
     }
 
     /// Records a calibration offset aligned to a specific NWS station.
@@ -173,6 +181,7 @@ final class AppSettings {
         backgroundMonitoringEnabled = false
         lightningDetectionEnabled = true
         stationsMapExpanded = false
+        stationsListExpanded = false
         chartPressureUnit = .hPa
         clearCalibration()
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)

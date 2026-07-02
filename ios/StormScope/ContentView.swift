@@ -87,7 +87,16 @@ struct ContentView: View {
                         isLoading: viewModel.isLoadingOutlook
                     )
 
-                    // Verification: station map + official station readings.
+                    // Verification: official station readings + spatial map + comparison chart.
+                    StationsCardView(
+                        stations: viewModel.stations,
+                        devicePressure: viewModel.displayPressure,
+                        units: units,
+                        pressureMode: pressureMode,
+                        isLoading: viewModel.isLoadingStations,
+                        errorMessage: viewModel.stationsError,
+                        isExpanded: $settings.stationsListExpanded
+                    )
                     StationsMapCardView(
                         stations: viewModel.stations,
                         deviceLatitude: viewModel.location.latitude,
@@ -98,14 +107,14 @@ struct ContentView: View {
                         errorMessage: viewModel.stationsError,
                         isExpanded: $settings.stationsMapExpanded
                     )
-                    StationsCardView(
-                        stations: viewModel.stations,
-                        devicePressure: viewModel.displayPressure,
-                        units: units,
-                        pressureMode: pressureMode,
-                        isLoading: viewModel.isLoadingStations,
-                        errorMessage: viewModel.stationsError
-                    )
+                    if !viewModel.stations.isEmpty {
+                        StationsChartCardView(
+                            stations: viewModel.stations,
+                            devicePressure: viewModel.displayPressure,
+                            units: units,
+                            pressureMode: pressureMode
+                        )
+                    }
                     WeatherStripView(
                         weather: viewModel.weather,
                         sensorDelta: viewModel.sensorVsStationDelta,

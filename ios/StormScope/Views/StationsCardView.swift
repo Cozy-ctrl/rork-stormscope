@@ -10,30 +10,15 @@ struct StationsCardView: View {
     let pressureMode: PressureDisplayMode
     let isLoading: Bool
     let errorMessage: String?
+    @Binding var isExpanded: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 8) {
-                Image(systemName: "sensor.tag.radiowaves.forward")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.cyan)
-                Text("Nearest NWS Stations")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Theme.textPrimary)
-                Spacer()
-                if !stations.isEmpty {
-                    Text("MEASURED")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .kerning(1)
-                        .foregroundStyle(Theme.cyan)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.cyan.opacity(0.12))
-                        .clipShape(Capsule())
-                }
-            }
+            header
 
-            if !stations.isEmpty {
+            if !isExpanded {
+                EmptyView()
+            } else if !stations.isEmpty {
                 VStack(spacing: 8) {
                     ForEach(stations) { station in
                         stationRow(station)
@@ -75,6 +60,44 @@ struct StationsCardView: View {
         .background(Theme.panel)
         .clipShape(.rect(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.panelStroke, lineWidth: 1))
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isExpanded)
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        Button {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "sensor.tag.radiowaves.forward")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.cyan)
+                Text("Nearest NWS Stations")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                if !stations.isEmpty {
+                    Text("\(stations.count)")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.cyan)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.cyan.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 28, height: 28)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isExpanded ? "Collapse station list" : "Expand station list")
+        .sensoryFeedback(.impact(weight: .light), trigger: isExpanded)
     }
 
     // MARK: - Rows
