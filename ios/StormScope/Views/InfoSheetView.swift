@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Comprehensive guide to every sensor, data source, metric, and threshold
-/// StormScope uses. Structured as a scrollable reference the user can revisit
-/// anytime from the dashboard info button.
+/// StormScope uses. Structured as a scrollable reference organised by category
+/// so the user can revisit any topic anytime from the dashboard info button.
 struct InfoSheetView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -11,21 +11,45 @@ struct InfoSheetView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     intro
+
+                    // MARK: Core Instrument
+                    stormLevelsSection
+                    gaugeModesSection
+                    tendencySection
+                    trendChartSection
                     barometerSection
                     mslpSection
+
+                    // MARK: On-Device Sensors
                     magnetometerSection
+
+                    // MARK: Atmospheric Analysis
                     atmosphericSection
                     tornadoSection
+
+                    // MARK: Official Data Sources
                     alertsSection
                     mapSection
                     velocityRadarSection
                     outlookSection
+
+                    // MARK: Station Verification
                     stationsSection
                     stationsMapSection
                     stationObservedSection
+
+                    // MARK: Intelligence Layer
                     eventConfirmationSection
                     aiSection
+
+                    // MARK: Background & Extras
+                    backgroundSection
+                    widgetSection
+                    demoSection
                     ipSection
+
+                    // MARK: Reference
+                    settingsOverviewSection
                     tipsSection
                     disclaimerBlock
                 }
@@ -60,25 +84,26 @@ struct InfoSheetView: View {
         }
     }
 
-    // MARK: - Barometer
+    // MARK: - Storm Levels & Banner
 
-    private var barometerSection: some View {
+    private var stormLevelsSection: some View {
         section(
-            icon: "gauge.with.dots.needle.50percent",
-            title: "Barometric Pressure",
-            tint: Theme.cyan
+            icon: "cloud.bolt.fill",
+            title: "Storm Levels & Status Banner",
+            tint: Theme.orange
         ) {
-            Text("Your iPhone has a barometer accurate to a fraction of a hectopascal. Because it measures the air around *you* — not a station kilometers away — it can flag an incoming pressure front minutes to hours before regional reports update.")
+            Text("The large banner at the top of the dashboard is your single-glance summary. It shows one of six storm levels — from Calibrating through Front Imminent — derived from your barometer's pressure trend. Each level has its own icon, colour, and detailed description.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Pressure Tendency Thresholds")
+            Text("Levels (least to most severe)")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.top, 4)
 
             VStack(spacing: 6) {
+                threshold(level: .collecting, detail: "Gathering samples — needs ~15 min")
                 threshold(level: .rising, detail: "Rising \u{2265} +0.8 hPa/h")
                 threshold(level: .steady, detail: "Within \u{00B1}0.6 hPa/h")
                 threshold(level: .falling, detail: "Falling 0.6\u{20131}.5 hPa/h")
@@ -86,11 +111,113 @@ struct InfoSheetView: View {
                 threshold(level: .frontImminent, detail: "Falling >3.0 hPa/h")
             }
 
-            Text("Trends use a least-squares regression over the last 60 minutes and require at least 15 minutes of data. A large sustained 3-hour drop can also escalate the level even if the last hour has momentarily flattened.")
+            Text("At Storm Watch and above, the banner pulses gently and the border glows. At Front Imminent, the app delivers haptic feedback. The banner updates in real time as new barometer readings arrive (roughly once per second).")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 4)
+        }
+    }
+
+    // MARK: - Gauge Display Modes
+
+    private var gaugeModesSection: some View {
+        section(
+            icon: "gauge.with.dots.needle.50percent",
+            title: "Pressure Gauge & Display Modes",
+            tint: Theme.cyan
+        ) {
+            Text("The large circular gauge is the centrepiece of the dashboard. It shows your current barometric pressure in real time, with the needle position reflecting the trend direction. You can choose from four display modes in Settings:")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("hPa — hectopascals, the international meteorological standard. Shows one decimal place.")
+                bullet("inHg — inches of mercury, the U.S. standard. Shows two decimal places.")
+                bullet("mmHg — millimetres of mercury, common in medical and legacy contexts.")
+                bullet("Dual (hPa + inHg) — shows both values side by side at equal weight, each with its own unit label. The MSLP badge and calibration checkmark sit centred above both.")
+            }
+
+            Text("When MSLP is enabled in Settings, a small \u{201C}MSLP\u{201D} badge appears next to the reading, confirming the value has been adjusted to sea level. A green checkmark badge appears when your barometer is calibrated to a nearby NWS station.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - 1h / 3h / 6h Tendency Cards
+
+    private var tendencySection: some View {
+        section(
+            icon: "arrow.up.and.down.circle",
+            title: "1h / 3h / 6h Tendency Cards",
+            tint: Theme.green
+        ) {
+            Text("Three compact cards sit directly below the gauge, showing short-, medium-, and long-term pressure change. Each card displays a directional arrow and the signed delta in your chosen pressure unit.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("1h — the last hour's net change. Useful for spotting rapid development.")
+                bullet("3h — the classic meteorology standard for pressure-tendency reports.")
+                bullet("6h — reveals whether a trend is sustained or transient.")
+            }
+
+            Text("Arrows are colour-coded: green for steady, cyan for rising, amber/orange for moderate drop, red for severe drop (\u{2264} \u{22123} hPa). Cards show an hourglass placeholder when insufficient data is available. Text auto-scales so large deltas never overflow the card.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Interactive Trend Chart
+
+    private var trendChartSection: some View {
+        section(
+            icon: "chart.xyaxis.line",
+            title: "Interactive Trend Chart",
+            tint: Theme.cyan
+        ) {
+            Text("A scrollable area chart plots your pressure over the last 6 hours. The smoothed line (Catmull-Rom interpolation) makes the trend direction immediately obvious, while the gradient fill gives a sense of magnitude.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("The chart has its own independent hPa / inHg toggle in the header, separate from the gauge. This lets meteorologists keep the chart in hPa (the global analysis standard) even when their spot readout is in inHg. Hourly axis labels and trailing-grid marks frame the data without clutter.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("The Y-axis auto-scales with 20% padding so even subtle trends are visible. When fewer than 2 readings exist, a placeholder appears instead of an empty chart. The chart is purely visual — it does not support pinch-to-zoom or point selection.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Barometer (Trend Detection)
+
+    private var barometerSection: some View {
+        section(
+            icon: "sensor",
+            title: "Barometric Pressure & Trend Detection",
+            tint: Theme.cyan
+        ) {
+            Text("Your iPhone has a barometer accurate to a fraction of a hectopascal. Because it measures the air around *you* — not a station kilometres away — it can flag an incoming pressure front minutes to hours before regional reports update.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Trends use a least-squares regression over the last 60 minutes and require at least 15 minutes of data. A large sustained 3-hour drop can also escalate the level even if the last hour has momentarily flattened. Minute-to-minute volatility (jitter) is tracked separately and feeds the tornado signature analyser.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("The barometer is sampled roughly once per second when the app is active. In the background, sampling continues using significant-location-change wakeups — see the Background Monitoring section below.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -167,7 +294,7 @@ struct InfoSheetView: View {
             title: "Atmospheric Instability (CAPE & Lifted Index)",
             tint: Theme.orange
         ) {
-            Text("CAPE (Convective Available Potential Energy, in J/kg) and Lifted Index (in \u{00B0C}) are standard meteorology metrics pulled from the Open-Meteo weather model. They measure how much \u{201Cf}uel\u{201D} the atmosphere has for thunderstorm development.")
+            Text("CAPE (Convective Available Potential Energy, in J/kg) and Lifted Index (in \u{00B0}C) are standard meteorology metrics pulled from the Open-Meteo weather model. They measure how much \u{201C}fuel\u{201D} the atmosphere has for thunderstorm development. Both values appear in the Local Conditions grid with colour-coded severity labels.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -212,7 +339,7 @@ struct InfoSheetView: View {
             title: "Tornado Signature Analysis",
             tint: Theme.red
         ) {
-            Text("Tornadic mesocyclones produce abrupt, rotation-scale pressure falls over minutes \u{2014} much faster than a synoptic front\u{2019}s hours-long decline. The signature analyzer watches a tight 10-minute window and measures sample-to-sample volatility over 30 minutes.")
+            Text("Tornadic mesocyclones produce abrupt, rotation-scale pressure falls over minutes \u{2014} much faster than a synoptic front\u{2019}s hours-long decline. The signature analyser watches a tight 10-minute window and measures sample-to-sample volatility over 30 minutes.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -220,7 +347,7 @@ struct InfoSheetView: View {
             VStack(alignment: .leading, spacing: 5) {
                 bullet("Signature: 10-minute drop \u{2264} \u{22121}.2 hPa, OR \u{2264} \u{22120}.8 hPa with an unstable atmosphere (high CAPE / strongly negative Lifted Index).")
                 bullet("Elevated: 10-minute drop \u{2264} \u{22120}.5 hPa, OR \u{2264} \u{22120}.3 hPa with an unstable atmosphere, OR sustained minute-to-minute jitter \u{2265} 0.15 hPa.")
-                bullet("Quiet: No rotation-scale pressure behavior detected.")
+                bullet("Quiet: No rotation-scale pressure behaviour detected.")
                 bullet("Insufficient data: Fewer than 4 samples in the 10-minute window or less than 5 minutes of data.")
             }
 
@@ -239,7 +366,7 @@ struct InfoSheetView: View {
             title: "NWS Alerts",
             tint: Theme.red
         ) {
-            Text("Official National Weather Service alerts are pulled from api.weather.gov for your exact GPS coordinates \u{2014} the same feed that weather radios and local stations relay. Coverage is U.S. only.")
+            Text("Official National Weather Service alerts are pulled from api.weather.gov for your exact GPS coordinates \u{2014} the same feed that weather radios and local stations relay. Coverage is U.S. only. Active alerts appear as red/amber strips below the storm banner.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -258,15 +385,38 @@ struct InfoSheetView: View {
             title: "Radar & Satellite Map",
             tint: Theme.cyan
         ) {
-            Text("The radar card shows live NEXRAD composite reflectivity tiles from the Iowa Environmental Mesonet. A layer toggle lets you switch between Radar, Satellite, or Both.")
+            Text("The radar card shows live NEXRAD composite reflectivity tiles from the Iowa Environmental Mesonet. A layer toggle lets you switch between Radar, Satellite, Velocity, or stacked combinations.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Satellite mode streams GOES-East infrared imagery \u{2014} colder (brighter) cloud tops indicate higher, more intense storm clouds. \u{201CB}oth\u{201D} stacks the satellite underneath the radar sweep so you can see storm structure and precipitation together. The app also checks whether the nearest NEXRAD radar site is actively reporting; if it is down for maintenance a small notice appears on the card.")
+            Text("Satellite mode streams GOES-East infrared imagery \u{2014} colder (brighter) cloud tops indicate higher, more intense storm clouds. \u{201C}Both\u{201D} stacks the satellite underneath the radar sweep so you can see storm structure and precipitation together. Velocity (see next section) adds wind-field detail. The app also checks whether the nearest NEXRAD radar site is actively reporting; if it is down for maintenance a small notice appears on the card.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Radar and satellite are delayed by several minutes and should not be used for minute-by-minute storm tracking.")
+            Text("Radar, satellite, and velocity are delayed by 5\u{2013}15 minutes and should not be used for minute-by-minute storm tracking.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Velocity radar
+
+    private var velocityRadarSection: some View {
+        section(
+            icon: "arrow.left.arrow.right.circle.fill",
+            title: "Velocity Radar",
+            tint: Theme.cyan
+        ) {
+            Text("In addition to reflectivity radar, the map layer toggle offers a Storm Relative Velocity product from the nearest NEXRAD site. Green pixels indicate motion toward the radar; red pixels indicate motion away. A tight green/red couplet side by side — the classic velocity signature of rotation — can reveal a developing mesocyclone before reflectivity shows a hook echo.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Velocity data comes from single-site RIDGE tiles (Iowa Environmental Mesonet). The site is auto-selected as the nearest reporting NEXRAD to your location. Satellite and radar layers are independent — you can view any combination with the layered map controls.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Velocity imagery has the same 5\u{2013}15 minute delay as reflectivity and should not be used for minute-by-minute tornado confirmation. It is one additional data point alongside reflectivity, satellite, and surface observations.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -281,7 +431,7 @@ struct InfoSheetView: View {
             title: "SPC Convective Outlooks",
             tint: Theme.amber
         ) {
-            Text("The Storm Prediction Center issues daily categorical outlooks for severe weather risk. StormScope pulls Day 1, 2, and 3 outlooks from the Iowa Environmental Mesonet.")
+            Text("The Storm Prediction Center issues daily categorical outlooks for severe weather risk. StormScope pulls Day 1, 2, and 3 outlooks from the Iowa Environmental Mesonet. Tap the day switcher to see each forecast horizon.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -309,11 +459,11 @@ struct InfoSheetView: View {
             title: "Nearby NWS Stations & Calibration",
             tint: Theme.green
         ) {
-            Text("The app discovers the closest official NWS observation stations and pulls their latest reported readings — temperature, wind, dew point, visibility, and sea-level-corrected barometric pressure. This lets you compare your on-device sensor against real instruments nearby.")
+            Text("The app discovers the closest official NWS observation stations and pulls their latest reported readings — temperature, wind, dew point, visibility, and sea-level-corrected barometric pressure. This lets you compare your on-device sensor against real instruments nearby. The station list is collapsed by default; tap the header to reveal individual station cards.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("One-tap calibration in Settings aligns your device barometer to the nearest reporting station, zeroing out factory variance between devices. The calibration offset is additive and does not affect trend analysis (a constant offset cancels out in change calculations). When MSLP is enabled, both the device and the station report on the same sea-level plane, so the offset reflects only sensor drift \u{2014} typically less than 0.5 hPa.")
+            Text("One-tap calibration in Settings aligns your device barometer to the nearest reporting station, zeroing out factory variance between devices. The calibration offset is additive and does not affect trend analysis (a constant offset cancels out in change calculations). When MSLP is enabled, both the device and the station report on the same sea-level plane, so the offset reflects only sensor drift \u{2014} typically less than 0.5 hPa. A green checkmark badge on the gauge confirms calibration is active.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -332,11 +482,11 @@ struct InfoSheetView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("The Station Comparison chart lets you pick any measured quantity — pressure, temperature, dew point, wind speed, or humidity — and see it as interactive bars ordered by distance. Gradient callouts flag notable spreads between stations that may signal fronts, outflow boundaries, or drylines.")
+            Text("The Station Comparison chart lets you pick any measured quantity — pressure, temperature, dew point, wind speed, or humidity — and see it as interactive bars ordered by distance. Gradient callouts flag notable spreads between stations that may signal fronts, outflow boundaries, or drylines. Tapping a bar highlights that station\u{2019}s exact value and provides haptic feedback.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Tapping a bar highlights that station\u{2019}s exact value and provides haptic feedback. The pressure chart includes a dashed \u{201C}You\u{201D} rule so you can spot your sensor against every station at once. Both cards collapse by default and remember their expand/collapse state.")
+            Text("The pressure chart includes a dashed \u{201C}You\u{201D} rule so you can spot your sensor against every station at once. Both the map and station list collapse by default — the map always starts closed regardless of previous session state, keeping pins visible when you first open the app.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -378,34 +528,11 @@ struct InfoSheetView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("ASOS stations issue special reports (SPECI) during rapid pressure changes, so frequent polling catches them early. The verdict card shows you whether multiple stations confirm the same fall (regional event), only some do (system moving in), or stations are steady (your drop may be hyper-local or sensor noise). The on-device AI briefing incorporates this verdict when active.")
+            Text("ASOS stations issue special reports (SPECI) during rapid pressure changes, so frequent polling catches them early. The verdict card shows you whether multiple stations confirm the same fall (regional event), only some do (system moving in), or stations are steady (your drop may be hyper-local or sensor noise). The verdict dot\u{2019}s colour matches the confirmation verdict — green for all-clear, amber for partial, red for imminent.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Rapid polling stops automatically when the extreme event clears. The dashboard never pushes notifications based on an unconfirmed signal — it always waits for station cross-validation first.")
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.textTertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - Velocity radar
-
-    private var velocityRadarSection: some View {
-        section(
-            icon: "arrow.left.arrow.right.circle.fill",
-            title: "Velocity Radar",
-            tint: Theme.cyan
-        ) {
-            Text("In addition to reflectivity radar, the map layer toggle offers a Storm Relative Velocity product from the nearest NEXRAD site. Green pixels indicate motion toward the radar; red pixels indicate motion away. A tight green/red couplet side by side — the classic velocity signature of rotation — can reveal a developing mesocyclone before reflectivity shows a hook echo.")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Velocity data comes from single-site RIDGE tiles (Iowa Environmental Mesonet). The site is auto-selected as the nearest reporting NEXRAD to your location. Satellite and radar layers are independent — you can view any combination with the layered map controls.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Velocity imagery has the same 5\u{2013}15 minute delay as reflectivity and should not be used for minute-by-minute tornado confirmation. It is one additional data point alongside reflectivity, satellite, and surface observations.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -420,11 +547,82 @@ struct InfoSheetView: View {
             title: "On-Device AI Insight",
             tint: Theme.cyan
         ) {
-            Text("On iOS 26 devices with Apple Intelligence, the on-device Foundation Model reads your live sensor data and produces a plain-language briefing. It receives current pressure, trend, tornado signature status, active NWS alerts, weather conditions, CAPE, Lifted Index, lightning strike counts, and the SPC Day 1 outlook.")
+            Text("On iOS 26 devices with Apple Intelligence, the on-device Foundation Model reads your live sensor data and produces a plain-language briefing. It receives current pressure, trend, tornado signature status, active NWS alerts, weather conditions, CAPE, Lifted Index, lightning strike counts, event confirmation status, and the SPC Day 1 outlook.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Everything runs on-device \u{2014} no data leaves your iPhone. The insight is probabilistic guidance, not a forecast. On devices without Apple Intelligence, the card shows the standard level description instead.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Background Monitoring
+
+    private var backgroundSection: some View {
+        section(
+            icon: "moon.zzz.fill",
+            title: "Background Monitoring",
+            tint: Theme.cyan
+        ) {
+            Text("When enabled in Settings \u{2192} Alerts & Monitoring, StormScope continues sampling barometric pressure while the app is closed. It uses iOS significant-location-change wakeups — the system wakes the app briefly when you move between cell towers, takes a pressure reading, and puts it back to sleep.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Battery impact is minimal because the barometer sensor draws microwatts and the wakeups are infrequent (typically every few kilometres of movement). Your location data never leaves the device — it is only used to trigger the wakeup. Background monitoring requires a device barometer (iPhone 6 and later).")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Readings collected in the background feed into the trend analyser and chart the next time you open the app, so your pressure history stays continuous. Background monitoring is disabled by default.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Widget & Live Activity
+
+    private var widgetSection: some View {
+        section(
+            icon: "bolt.badge.clock",
+            title: "Lock Screen Live Activity & Home Screen Widget",
+            tint: Theme.cyan
+        ) {
+            Text("StormScope includes two iOS-native glance experiences so you can monitor pressure without opening the app:")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("Lock Screen Live Activity — shows current pressure, trend direction, and storm level on your Lock Screen and in the Dynamic Island. Toggle it on in Settings \u{2192} Alerts & Monitoring.")
+                bullet("Home Screen Widget — displays a sparkline of recent pressure readings, the current value, and a trend arrow. Add it from the widget gallery like any other iOS widget.")
+            }
+
+            Text("Both update periodically using the same pressure store. The Live Activity requires iOS 16.1+. Neither the widget nor the Live Activity requires the app to be open — they refresh from the background pressure store independently.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Demo Mode
+
+    private var demoSection: some View {
+        section(
+            icon: "iphone.gen1.slash",
+            title: "Demo Mode (No Barometer)",
+            tint: Theme.amber
+        ) {
+            Text("If your device lacks a barometer — iPads, iPod touch, older iPhones, all simulators — StormScope automatically switches to a simulated pressure feed. A notice in Settings explains that barometer-dependent features (background monitoring, sensor calibration, pressure-triggered notifications) are disabled.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("The simulated feed varies around 1013 hPa with realistic noise and occasional drops so you can still explore all dashboard features: the gauge, trend chart, tendency cards, tornado analyser, and station comparison. Everything else — NWS alerts, radar, satellite, SPC outlooks, weather data, lightning detection — works identically regardless of barometer availability.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Install StormScope on a barometer-equipped iPhone (iPhone 6 or later) for live pressure readings. The simulated feed is for demonstration only and does not reflect real atmospheric pressure.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -450,6 +648,34 @@ struct InfoSheetView: View {
         }
     }
 
+    // MARK: - Settings Overview
+
+    private var settingsOverviewSection: some View {
+        section(
+            icon: "gearshape.fill",
+            title: "Settings & Preferences",
+            tint: Theme.textSecondary
+        ) {
+            Text("StormScope\u{2019}s settings are split into five sections so you can tailor every aspect of the app:")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                bullet("Measurement Units — temperature/wind metric or imperial; pressure display (hPa, inHg, mmHg, or dual); chart unit (independent hPa/inHg toggle); MSLP on/off.")
+                bullet("Alerts & Monitoring — storm and tornado notification toggles; background monitoring; Lock Screen Live Activity; lightning detection on/off.")
+                bullet("Sensor Calibration — one-tap alignment to the nearest NWS station; shows active offset and station ID; clear calibration to revert to factory sensor.")
+                bullet("Data — shows how many pressure readings are stored; delete all data with confirmation (permanent, cannot be undone).")
+                bullet("About — app version; data source acknowledgements (api.weather.gov, spc.noaa.gov, Open-Meteo); device-capability checklist; links to privacy policy and terms.")
+            }
+
+            Text("All settings persist across app restarts and are stored only on this device. Nothing is synced or uploaded.")
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     // MARK: - Tips
 
     private var tipsSection: some View {
@@ -462,8 +688,7 @@ struct InfoSheetView: View {
                 tip("clock", "Keep the app open for ~15 minutes for the first trend estimate; accuracy improves with hours of continuous data.")
                 tip("figure.stairs", "Elevation changes (stairs, elevators, driving uphill) shift readings \u{2014} pressure trends are most reliable when you stay at one altitude. Enable MSLP to compensate automatically.")
                 tip("hand.raised.fill", "For lightning detection, keep the phone stationary on a flat surface. Movement or nearby electronics (chargers, speakers) create false strikes.")
-                tip("moon.zzz.fill", "Background Monitoring in Settings keeps the barometer sampling while the app is closed using significant-location-change wakeups. Battery impact is minimal.")
-                tip("bolt.badge.clock", "The Lock Screen Live Activity shows your current pressure and trend without opening the app \u{2014} enable it in Settings.")
+                tip("scope", "Calibrate your barometer to the nearest NWS station from Settings anytime — especially after travelling to a new region or elevation.")
                 tip("exclamationmark.shield.fill", "This is an early-warning aid, not a replacement for official severe weather alerts. Always follow instructions from NOAA Weather Radio, local NWS alerts, and civil authorities for life-safety decisions.")
             }
         }
