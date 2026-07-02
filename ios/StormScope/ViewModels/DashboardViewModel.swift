@@ -134,6 +134,9 @@ final class DashboardViewModel {
         if let d3 = assessment.delta3h {
             parts.append(String(format: "3-hour change: %+.1f hPa", d3))
         }
+        if let d6 = assessment.delta6h {
+            parts.append(String(format: "6-hour change: %+.1f hPa", d6))
+        }
         parts.append("Status: \(assessment.level.title)")
         if isTornadoModeEnabled, let drop = tornadoSignature.drop10m {
             parts.append(String(format: "10-minute change: %+.2f hPa (tornado signature mode)", drop))

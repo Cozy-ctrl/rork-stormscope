@@ -12,15 +12,18 @@ nonisolated struct StormAssessment {
     let delta1h: Double?
     /// Pressure change over roughly the last three hours, in hPa.
     let delta3h: Double?
+    /// Pressure change over roughly the last six hours, in hPa.
+    let delta6h: Double?
     let level: StormLevel
 
     static func assess(readings: [PressureReading], now: Date = Date()) -> StormAssessment {
         let rate = hourlySlope(of: readings, now: now)
         let d1 = delta(in: readings, hoursAgo: 1, now: now)
         let d3 = delta(in: readings, hoursAgo: 3, now: now)
+        let d6 = delta(in: readings, hoursAgo: 6, now: now)
 
         guard let rate else {
-            return StormAssessment(ratePerHour: nil, delta1h: d1, delta3h: d3, level: .collecting)
+            return StormAssessment(ratePerHour: nil, delta1h: d1, delta3h: d3, delta6h: d6, level: .collecting)
         }
 
         var level: StormLevel
@@ -43,7 +46,7 @@ nonisolated struct StormAssessment {
             level = .stormLikely
         }
 
-        return StormAssessment(ratePerHour: rate, delta1h: d1, delta3h: d3, level: level)
+        return StormAssessment(ratePerHour: rate, delta1h: d1, delta3h: d3, delta6h: d6, level: level)
     }
 
     /// Least-squares linear regression slope over the last 60 minutes,

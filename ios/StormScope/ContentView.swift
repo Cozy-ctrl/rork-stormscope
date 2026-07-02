@@ -53,7 +53,7 @@ struct ContentView: View {
                         isMSLP: viewModel.settings.mslpEnabled
                     )
                     .padding(.vertical, 4)
-                    TendencyRowView(delta1h: assessment.delta1h, delta3h: assessment.delta3h, pressureMode: pressureMode)
+                    TendencyRowView(delta1h: assessment.delta1h, delta3h: assessment.delta3h, delta6h: assessment.delta6h, pressureMode: pressureMode)
                     TrendChartView(readings: viewModel.displayReadings, tint: assessment.level.tint, pressureMode: pressureMode)
 
                     // Threat detection: micro-drop analysis + lightning EMP.
