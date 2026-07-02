@@ -87,6 +87,17 @@ struct ContentView: View {
                         isLoading: viewModel.isLoadingOutlook
                     )
 
+                    // Local conditions summary from the nearest station + device sensor comparison.
+                    WeatherStripView(
+                        weather: viewModel.weather,
+                        sensorDelta: viewModel.sensorVsStationDelta,
+                        units: units,
+                        pressureMode: pressureMode,
+                        isMSLP: viewModel.settings.mslpEnabled,
+                        isLoading: viewModel.isLoadingWeather,
+                        errorMessage: viewModel.weatherError
+                    )
+
                     // Verification: official station readings + spatial map + comparison chart.
                     StationsCardView(
                         stations: viewModel.stations,
@@ -115,15 +126,6 @@ struct ContentView: View {
                             pressureMode: pressureMode
                         )
                     }
-                    WeatherStripView(
-                        weather: viewModel.weather,
-                        sensorDelta: viewModel.sensorVsStationDelta,
-                        units: units,
-                        pressureMode: pressureMode,
-                        isMSLP: viewModel.settings.mslpEnabled,
-                        isLoading: viewModel.isLoadingWeather,
-                        errorMessage: viewModel.weatherError
-                    )
                     footer
                 }
                 .padding(.horizontal, 16)
