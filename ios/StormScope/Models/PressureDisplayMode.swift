@@ -101,6 +101,18 @@ nonisolated enum PressureDisplayMode: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Unsigned magnitude (e.g. a worst-case offset), no "+"/"-" prefix.
+    func magnitude(_ hPa: Double) -> String {
+        switch self {
+        case .hPa, .dual:
+            return String(format: "%.1f hPa", abs(hPa))
+        case .inHg:
+            return String(format: "%.3f inHg", abs(hPa) * 0.029529983)
+        case .mmHg:
+            return String(format: "%.1f mmHg", abs(hPa) * 0.750061683)
+        }
+    }
+
     /// Signed fine-grained delta for micro-pressure analysis.
     func deltaFine(_ hPa: Double) -> String {
         switch self {
@@ -134,6 +146,19 @@ nonisolated enum PressureDisplayMode: String, CaseIterable, Identifiable {
             return String(format: "±%.3f inHg", hPa * 0.029529983)
         case .mmHg:
             return String(format: "±%.2f mmHg", hPa * 0.750061683)
+        }
+    }
+
+    /// Spatial pressure-gradient magnitude (hPa per 100 km), e.g.
+    /// "1.2 hPa/100km" / "0.035 inHg/100km".
+    func gradientMagnitude(_ hPaPer100km: Double) -> String {
+        switch self {
+        case .hPa, .dual:
+            return String(format: "%.1f hPa/100km", hPaPer100km)
+        case .inHg:
+            return String(format: "%.3f inHg/100km", hPaPer100km * 0.029529983)
+        case .mmHg:
+            return String(format: "%.1f mmHg/100km", hPaPer100km * 0.750061683)
         }
     }
 

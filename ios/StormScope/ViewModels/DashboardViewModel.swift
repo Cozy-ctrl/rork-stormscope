@@ -20,6 +20,11 @@ final class DashboardViewModel {
     private var monitorTask: Task<Void, Never>?
     private var surgeTask: Task<Void, Never>?
 
+    deinit {
+        monitorTask?.cancel()
+        surgeTask?.cancel()
+    }
+
     private(set) var weather: WeatherSnapshot?
     private(set) var weatherError: String?
     private(set) var isLoadingWeather = false
@@ -45,8 +50,11 @@ final class DashboardViewModel {
     private(set) var isRapidPollingActive = false
     private(set) var isCheckingConfirmation = false
 
-    var isTornadoModeEnabled: Bool = UserDefaults.standard.bool(forKey: "stormscope.tornadoMode") {
-        didSet { UserDefaults.standard.set(isTornadoModeEnabled, forKey: "stormscope.tornadoMode") }
+    /// Forwards to `AppSettings` so tornado mode is persisted and reset
+    /// consistently with every other user preference.
+    var isTornadoModeEnabled: Bool {
+        get { settings.tornadoModeEnabled }
+        set { settings.tornadoModeEnabled = newValue }
     }
 
     var assessment: StormAssessment {
@@ -197,22 +205,26 @@ final class DashboardViewModel {
     }
 
     /// Compact live-sensor context fed to the on-device Foundation Model.
+    /// Values are formatted in the user's chosen pressure/unit system so the
+    /// model's generated guidance never mentions a unit the user didn't pick.
     var intelligenceContext: String {
+        let pressureMode = settings.pressureDisplayMode
+        let unitSystem = settings.unitSystem
         var parts: [String] = []
         if let pressure = displayPressure {
-            parts.append(String(format: "Current pressure: %.1f hPa%@", pressure, settings.mslpEnabled ? " (MSLP)" : ""))
+            parts.append("Current pressure: \(pressureMode.primaryString(pressure)) \(pressureMode.primaryUnit)\(settings.mslpEnabled ? " (MSLP)" : "")")
         }
         if let altitude = location.altitude {
-            parts.append(String(format: "Device altitude: %.0f m", altitude))
+            parts.append("Device altitude: \(unitSystem.elevation(altitude))")
         }
         if let rate = assessment.ratePerHour {
-            parts.append(String(format: "1-hour trend: %+.2f hPa/hour", rate))
+            parts.append("1-hour trend: \(pressureMode.rate(rate))")
         }
         if let d3 = assessment.delta3h {
-            parts.append(String(format: "3-hour change: %+.1f hPa", d3))
+            parts.append("3-hour change: \(pressureMode.delta(d3))")
         }
         if let d6 = assessment.delta6h {
-            parts.append(String(format: "6-hour change: %+.1f hPa", d6))
+            parts.append("6-hour change: \(pressureMode.delta(d6))")
         }
         parts.append("Status: \(assessment.level.title)")
         if settings.isCalibrated, let station = settings.calibrationStationID {
@@ -227,19 +239,13 @@ final class DashboardViewModel {
             } else {
                 verdict = "large divergence from the network — treat absolute pressure with caution, trends remain reliable"
             }
-            parts.append(String(
-                format: "Station cross-check: %d nearby NWS stations, worst offset %.1f hPa — %@.",
-                agreement.count, agreement.maxAbsDelta, verdict
-            ))
+            parts.append("Station cross-check: \(agreement.count) nearby NWS stations, worst offset \(pressureMode.magnitude(agreement.maxAbsDelta)) — \(verdict).")
         }
         if let gradient = pressureGradient, gradient.isSignificant {
-            parts.append(String(
-                format: "Spatial pressure gradient: falling toward the %@ at %.1f hPa per 100 km (weather systems generally approach from the falling side).",
-                gradient.compassLabel, gradient.magnitudeHPaPer100km
-            ))
+            parts.append("Spatial pressure gradient: falling toward the \(gradient.compassLabel) at \(pressureMode.gradientMagnitude(gradient.magnitudeHPaPer100km)) (weather systems generally approach from the falling side).")
         }
         if isTornadoModeEnabled, let drop = tornadoSignature.drop10m {
-            parts.append(String(format: "10-minute change: %+.2f hPa (tornado signature mode)", drop))
+            parts.append("10-minute change: \(pressureMode.deltaFine(drop)) (tornado signature mode)")
         }
         if assessment.escalatedByCorroboration {
             parts.append("Storm level was raised one tier EARLY because independent signals corroborate the pressure fall: \(assessment.corroborators.joined(separator: ", ")).")
@@ -255,15 +261,9 @@ final class DashboardViewModel {
             parts.append("Active NWS alert: \(top.properties.event)")
         }
         if let weather {
-            var weatherLine = String(
-                format: "Conditions: %@, %.0f°C, wind %.0f km/h, humidity %d%%",
-                WeatherCode.description(weather.weatherCode),
-                weather.temperature,
-                weather.windSpeed,
-                weather.humidity
-            )
+            var weatherLine = "Conditions: \(WeatherCode.description(weather.weatherCode)), \(unitSystem.temperature(weather.temperature)), wind \(unitSystem.speed(weather.windSpeed)), humidity \(weather.humidity)%"
             if let dew = weather.dewPoint {
-                weatherLine += String(format: ", dew point %.0f°C", dew)
+                weatherLine += ", dew point \(unitSystem.temperature(dew))"
             }
             if let cape = weather.cape {
                 weatherLine += ", CAPE \(Int(cape)) J/kg"
@@ -272,30 +272,30 @@ final class DashboardViewModel {
                 weatherLine += String(format: ", Lifted Index %.1f", liftedIndex)
             }
             if let gusts = weather.windGust {
-                weatherLine += String(format: ", gusts %.0f km/h", gusts)
+                weatherLine += ", gusts \(unitSystem.speed(gusts))"
             }
             parts.append(weatherLine)
             if let rate = weather.precipitationNow, rate >= 0.1 {
-                parts.append(String(format: "Precipitation falling now: %.1f mm/h", rate))
+                parts.append("Precipitation falling now: \(unitSystem.precipRate(rate))")
             }
             if let total = weather.precipitationLast24h, total >= 1 {
-                parts.append(String(format: "24-hour precipitation total: %.1f mm", total))
+                parts.append("24-hour precipitation total: \(unitSystem.precipAmount(total))")
             }
         }
         if let windStation = stations.first(where: { $0.windSpeedKmh != nil }),
            let observedWind = windStation.windSpeedKmh {
-            var windLine = String(format: "Observed wind at station %@ (%.0f km away): %.0f km/h", windStation.id, windStation.distanceKm, observedWind)
+            var windLine = "Observed wind at station \(windStation.id) (\(unitSystem.distance(windStation.distanceKm)) away): \(unitSystem.speed(observedWind))"
             if let direction = windStation.windDirectionDeg {
                 windLine += String(format: " from %.0f°", direction)
             }
             if let gust = windStation.windGustKmh {
-                windLine += String(format: ", gusting %.0f km/h", gust)
+                windLine += ", gusting \(unitSystem.speed(gust))"
             }
             parts.append(windLine)
         }
         if magnetometer.strikeCount > 0 {
             if let dist = magnetometer.estimatedDistanceKm {
-                parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour, last ~\(String(format: "%.1f", dist)) km away")
+                parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour, last ~\(unitSystem.distance(dist)) away")
             } else {
                 parts.append("Lightning: \(magnetometer.strikeCount) close-range strikes detected in the last hour")
             }
@@ -465,8 +465,7 @@ final class DashboardViewModel {
     /// Permanently deletes recorded pressure history and resets preferences.
     func deleteAllData() {
         barometer.clearHistory()
-        isTornadoModeEnabled = false
-        settings.reset()
+        settings.reset() // also resets tornadoModeEnabled
         location.setBackgroundMonitoring(false)
         liveActivity.end()
     }

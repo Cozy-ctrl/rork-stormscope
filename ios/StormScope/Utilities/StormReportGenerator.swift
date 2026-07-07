@@ -20,7 +20,7 @@ nonisolated struct StormReportGenerator {
 
         // Pressure
         let pressure: Double?
-        let pressureUnit: String
+        let pressureMode: PressureDisplayMode
         let isMSLP: Bool
         let isCalibrated: Bool
         let calibrationStation: String?
@@ -95,7 +95,7 @@ nonisolated struct StormReportGenerator {
         let radarSiteID: String?
 
         // Units
-        let usesImperial: Bool
+        let unitSystem: UnitSystem
     }
 
     // MARK: - Plain text report
@@ -112,7 +112,7 @@ nonisolated struct StormReportGenerator {
             lines.append("Location: \(place)\(locNote)")
         }
         if let alt = snapshot.altitude {
-            lines.append(String(format: "Elevation: %.0f m", alt))
+            lines.append("Elevation: \(snapshot.unitSystem.elevation(alt))")
         }
 
         // ── Sensor status ──
@@ -132,19 +132,19 @@ nonisolated struct StormReportGenerator {
         lines.append("── PRESSURE ──")
         if let p = snapshot.pressure {
             let mslpNote = snapshot.isMSLP ? " (MSLP)" : ""
-            lines.append("Current: \(String(format: "%.1f", p)) \(snapshot.pressureUnit)\(mslpNote)")
+            lines.append("Current: \(snapshot.pressureMode.primaryString(p)) \(snapshot.pressureMode.primaryUnit)\(mslpNote)")
         }
         if let rate = snapshot.ratePerHour {
-            lines.append(String(format: "1-hour trend: %+.2f \(snapshot.pressureUnit)/h", rate))
+            lines.append("1-hour trend: \(snapshot.pressureMode.rate(rate))")
         }
         if let d1 = snapshot.delta1h {
-            lines.append(String(format: "1-hour change: %+.1f \(snapshot.pressureUnit)", d1))
+            lines.append("1-hour change: \(snapshot.pressureMode.delta(d1))")
         }
         if let d3 = snapshot.delta3h {
-            lines.append(String(format: "3-hour change: %+.1f \(snapshot.pressureUnit)", d3))
+            lines.append("3-hour change: \(snapshot.pressureMode.delta(d3))")
         }
         if let d6 = snapshot.delta6h {
-            lines.append(String(format: "6-hour change: %+.1f \(snapshot.pressureUnit)", d6))
+            lines.append("6-hour change: \(snapshot.pressureMode.delta(d6))")
         }
         lines.append("Status: \(snapshot.levelTitle)")
         if snapshot.escalatedByCorroboration, !snapshot.corroborators.isEmpty {
@@ -160,10 +160,10 @@ nonisolated struct StormReportGenerator {
         lines.append("── TORNADO WATCH ──")
         lines.append("Signature status: \(snapshot.tornadoStatus)")
         if let drop = snapshot.tornadoDrop10m {
-            lines.append(String(format: "10-minute drop: %+.2f \(snapshot.pressureUnit)", drop))
+            lines.append("10-minute drop: \(snapshot.pressureMode.deltaFine(drop))")
         }
         if let vol = snapshot.tornadoVolatility {
-            lines.append(String(format: "Volatility: %.3f \(snapshot.pressureUnit)/min", vol))
+            lines.append("Volatility: \(snapshot.pressureMode.jitter(vol))/min")
         }
         lines.append("Atmosphere unstable: \(snapshot.tornadoUnstable ? "YES" : "no")")
         if snapshot.tornadoEscalated, !snapshot.tornadoCorroborators.isEmpty {
@@ -181,51 +181,44 @@ nonisolated struct StormReportGenerator {
             lines.append("Sky: \(desc)")
         }
         if let temp = snapshot.temperature {
-            let unit = snapshot.usesImperial ? "°F" : "°C"
-            lines.append(String(format: "Temperature: %.1f%@", temp, unit))
+            lines.append("Temperature: \(snapshot.unitSystem.temperatureLabeled(temp))")
         }
         if let feels = snapshot.apparentTemperature {
-            let unit = snapshot.usesImperial ? "°F" : "°C"
-            lines.append(String(format: "Feels like: %.1f%@", feels, unit))
+            lines.append("Feels like: \(snapshot.unitSystem.temperatureLabeled(feels))")
         }
         if let hum = snapshot.humidity {
             lines.append("Humidity: \(hum)%")
         }
         if let dew = snapshot.dewPoint {
-            lines.append(String(format: "Dew point: %.1f°C", dew))
+            lines.append("Dew point: \(snapshot.unitSystem.temperatureLabeled(dew))")
         }
         if let wind = snapshot.windSpeed {
-            let unit = snapshot.usesImperial ? "mph" : "km/h"
-            var windLine = String(format: "Wind: %.0f \(unit)", wind)
+            var windLine = "Wind: \(snapshot.unitSystem.speed(wind))"
             if let dir = snapshot.windDirection {
                 windLine += String(format: " from %.0f°", dir)
             }
             if let gust = snapshot.windGust {
-                windLine += String(format: ", gusting %.0f \(unit)", gust)
+                windLine += ", gusting \(snapshot.unitSystem.speed(gust))"
             }
             lines.append(windLine)
         }
         if let vis = snapshot.visibility {
-            if snapshot.usesImperial {
-                lines.append(String(format: "Visibility: %.1f mi", vis / 1609.34))
-            } else {
-                lines.append(String(format: "Visibility: %.1f km", vis / 1000))
-            }
+            lines.append("Visibility: \(snapshot.unitSystem.visibility(vis))")
         }
         if let cover = snapshot.cloudCover {
             lines.append("Cloud cover: \(cover)%")
         }
         if let precip = snapshot.precipitationNow, precip >= 0.1 {
-            lines.append(String(format: "Precipitation (now): %.1f mm/h", precip))
+            lines.append("Precipitation (now): \(snapshot.unitSystem.precipRate(precip))")
         }
         if let precip24 = snapshot.precipitationLast24h, precip24 >= 1 {
-            lines.append(String(format: "Precipitation (24 h): %.1f mm", precip24))
+            lines.append("Precipitation (24 h): \(snapshot.unitSystem.precipAmount(precip24))")
         }
         if let cape = snapshot.cape {
             lines.append("CAPE: \(Int(cape)) J/kg")
         }
         if let li = snapshot.liftedIndex {
-            lines.append(String(format: "Lifted Index: %.1f °C", li))
+            lines.append(String(format: "Lifted Index: %.1f", li))
         }
 
         lines.append("")
@@ -280,13 +273,13 @@ nonisolated struct StormReportGenerator {
             lines.append("Nearby NWS stations: \(snapshot.stationCount)")
             lines.append("Agreement: \(snapshot.stationAgreementVerdict)")
             if let delta = snapshot.stationMaxDelta {
-                lines.append(String(format: "Worst offset: ±%.1f \(snapshot.pressureUnit)", delta))
+                lines.append("Worst offset: ±\(snapshot.pressureMode.magnitude(delta))")
             }
         } else {
             lines.append("No nearby station data available.")
         }
         if let gradientLabel = snapshot.pressureGradientLabel, let gradientMag = snapshot.pressureGradientMagnitude {
-            lines.append(String(format: "Pressure gradient: falling toward \(gradientLabel) at %.1f \(snapshot.pressureUnit)/100km", gradientMag))
+            lines.append("Pressure gradient: falling toward \(gradientLabel) at \(snapshot.pressureMode.gradientMagnitude(gradientMag))")
         }
 
         lines.append("")

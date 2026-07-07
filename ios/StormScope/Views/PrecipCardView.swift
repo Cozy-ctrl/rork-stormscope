@@ -149,16 +149,12 @@ struct PrecipCardView: View {
 
     /// Rain rate from mm/h, e.g. "3.2 mm/h" / "0.13 in/h".
     private func rateLabel(_ mmPerHour: Double) -> String {
-        units == .metric
-            ? String(format: "%.1f mm/h", mmPerHour)
-            : String(format: "%.2f in/h", mmPerHour / 25.4)
+        units.precipRate(mmPerHour)
     }
 
     /// Accumulated amount from mm, e.g. "8.4 mm" / "0.33 in".
     private func amountLabel(_ mm: Double) -> String {
-        units == .metric
-            ? String(format: "%.1f mm", mm)
-            : String(format: "%.2f in", mm / 25.4)
+        units.precipAmount(mm)
     }
 }
 

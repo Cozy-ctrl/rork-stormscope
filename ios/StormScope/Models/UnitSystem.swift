@@ -82,11 +82,27 @@ nonisolated enum UnitSystem: String, CaseIterable, Identifiable {
             : String(format: "%.0f°", celsius * 9 / 5 + 32)
     }
 
+    /// Temperature from Celsius with an explicit unit letter, for reports and
+    /// exports where the ambiguity of a bare "°" isn't acceptable, e.g.
+    /// "21.0°C" / "69.8°F".
+    func temperatureLabeled(_ celsius: Double) -> String {
+        self == .metric
+            ? String(format: "%.1f°C", celsius)
+            : String(format: "%.1f°F", celsius * 9 / 5 + 32)
+    }
+
     /// Wind speed from km/h, e.g. "14 km/h" / "9 mph".
     func speed(_ kmh: Double) -> String {
         self == .metric
             ? String(format: "%.0f km/h", kmh)
             : String(format: "%.0f mph", kmh * 0.621371)
+    }
+
+    /// Elevation/altitude from meters, e.g. "120 m" / "394 ft".
+    func elevation(_ meters: Double) -> String {
+        self == .metric
+            ? String(format: "%.0f m", meters)
+            : String(format: "%.0f ft", meters * 3.28084)
     }
 
     /// Distance from kilometers, e.g. "12 km" / "7 mi".
@@ -105,5 +121,19 @@ nonisolated enum UnitSystem: String, CaseIterable, Identifiable {
             let mi = km * 0.621371
             return mi < 10 ? String(format: "%.1f mi", mi) : String(format: "%.0f mi", mi)
         }
+    }
+
+    /// Precipitation rate from mm/h, e.g. "3.2 mm/h" / "0.13 in/h".
+    func precipRate(_ mmPerHour: Double) -> String {
+        self == .metric
+            ? String(format: "%.1f mm/h", mmPerHour)
+            : String(format: "%.2f in/h", mmPerHour / 25.4)
+    }
+
+    /// Accumulated precipitation from mm, e.g. "8.4 mm" / "0.33 in".
+    func precipAmount(_ mm: Double) -> String {
+        self == .metric
+            ? String(format: "%.1f mm", mm)
+            : String(format: "%.2f in", mm / 25.4)
     }
 }

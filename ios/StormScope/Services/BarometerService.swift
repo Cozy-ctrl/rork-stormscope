@@ -20,6 +20,11 @@ final class BarometerService {
     private var simulatedBase: Double = 1017.0
     private var simulatedTick: Int = 0
 
+    deinit {
+        simulationTask?.cancel()
+        altimeter.stopRelativeAltitudeUpdates()
+    }
+
     func start() {
         guard !isRunning else { return }
         isRunning = true
@@ -28,6 +33,9 @@ final class BarometerService {
             isSimulated = false
             readings = store.load()
             lastRecordedAt = readings.last?.timestamp
+            // Delivered on .main below, so this closure is already running on
+            // the main actor — no extra Task/MainActor hop is needed to call
+            // the main-actor-isolated ingest(_:persist:).
             altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] data, error in
                 if let error {
                     print("[Barometer] Update error: \(error.localizedDescription)")
@@ -35,9 +43,7 @@ final class BarometerService {
                 }
                 guard let data else { return }
                 let hPa = data.pressure.doubleValue * 10.0
-                Task { @MainActor in
-                    self?.ingest(pressure: hPa, persist: true)
-                }
+                self?.ingest(pressure: hPa, persist: true)
             }
         } else {
             isSimulated = true

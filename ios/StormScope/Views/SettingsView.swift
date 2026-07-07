@@ -491,22 +491,27 @@ struct SettingsView: View {
         dict["tornadoSignature"] = tornado
 
         // Weather
+        // NOTE: JSONSerialization does not accept a Swift `nil` boxed as
+        // `Any` (an `Optional<T>.none` cast with `as Any`) — it silently
+        // fails `isValidJSONObject` or crashes depending on the runtime, so
+        // every optional here is coalesced to `NSNull()`, which serializes
+        // to a proper JSON `null`.
         if let weather = viewModel.weather {
             dict["weather"] = [
                 "temperature": weather.temperature,
                 "apparentTemperature": weather.apparentTemperature,
                 "humidity": weather.humidity,
                 "windSpeed": weather.windSpeed,
-                "windGust": weather.windGust as Any,
-                "windDirection": weather.windDirection as Any,
-                "dewPoint": weather.dewPoint as Any,
-                "cloudCover": weather.cloudCover as Any,
-                "visibility": weather.visibility as Any,
+                "windGust": weather.windGust ?? NSNull(),
+                "windDirection": weather.windDirection ?? NSNull(),
+                "dewPoint": weather.dewPoint ?? NSNull(),
+                "cloudCover": weather.cloudCover ?? NSNull(),
+                "visibility": weather.visibility ?? NSNull(),
                 "weatherCode": weather.weatherCode,
-                "precipitationNow": weather.precipitationNow as Any,
-                "precipitationLast24h": weather.precipitationLast24h as Any,
-                "cape": weather.cape as Any,
-                "liftedIndex": weather.liftedIndex as Any,
+                "precipitationNow": weather.precipitationNow ?? NSNull(),
+                "precipitationLast24h": weather.precipitationLast24h ?? NSNull(),
+                "cape": weather.cape ?? NSNull(),
+                "liftedIndex": weather.liftedIndex ?? NSNull(),
                 "stationPressure": weather.stationPressure,
                 "fetchedAt": formatter.string(from: weather.fetchedAt)
             ]
@@ -515,7 +520,7 @@ struct SettingsView: View {
         // Lightning
         dict["lightning"] = [
             "strikeCount": viewModel.magnetometer.strikeCount,
-            "estimatedDistanceKm": viewModel.magnetometer.estimatedDistanceKm as Any,
+            "estimatedDistanceKm": viewModel.magnetometer.estimatedDistanceKm ?? NSNull(),
             "proximity": viewModel.magnetometer.proximityLabel.rawValue
         ]
 

@@ -18,6 +18,10 @@ final class AppSettings {
     private static let stationsMapExpandedKey = "stormscope.settings.stationsMapExpanded"
     private static let stationsListExpandedKey = "stormscope.settings.stationsListExpanded"
     private static let chartPressureUnitKey = "stormscope.settings.chartPressureUnit"
+    private static let tornadoModeKey = "stormscope.settings.tornadoMode"
+    /// Legacy key: tornado mode used to be persisted directly on the view
+    /// model rather than through AppSettings. Read once for migration.
+    private static let legacyTornadoModeKey = "stormscope.tornadoMode"
 
     /// Whether the station map card is currently expanded. Defaults to collapsed
     /// so the dashboard stays compact until the user opens it.
@@ -106,6 +110,11 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(lightningDetectionEnabled, forKey: Self.lightningDetectionKey) }
     }
 
+    /// Enables tornado-scale short-window pressure signature analysis.
+    var tornadoModeEnabled: Bool {
+        didSet { UserDefaults.standard.set(tornadoModeEnabled, forKey: Self.tornadoModeKey) }
+    }
+
     /// Tracks whether the user has acknowledged the safety disclaimer on first launch.
     var hasAcceptedDisclaimer: Bool {
         get { UserDefaults.standard.bool(forKey: "stormscope.settings.disclaimerAccepted") }
@@ -154,6 +163,12 @@ final class AppSettings {
             : defaults.bool(forKey: Self.lightningDetectionKey)
         stationsMapExpanded = defaults.bool(forKey: Self.stationsMapExpandedKey)
         stationsListExpanded = defaults.bool(forKey: Self.stationsListExpandedKey)
+        if defaults.object(forKey: Self.tornadoModeKey) != nil {
+            tornadoModeEnabled = defaults.bool(forKey: Self.tornadoModeKey)
+        } else {
+            // One-time migration from the old view-model-owned key.
+            tornadoModeEnabled = defaults.bool(forKey: Self.legacyTornadoModeKey)
+        }
     }
 
     /// Records a calibration offset aligned to a specific NWS station.
@@ -183,6 +198,7 @@ final class AppSettings {
         stationsMapExpanded = false
         stationsListExpanded = false
         chartPressureUnit = .hPa
+        tornadoModeEnabled = false
         clearCalibration()
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)
         UserDefaults.standard.removeObject(forKey: Self.pressureUnitKey)

@@ -253,7 +253,7 @@ struct ContentView: View {
             isSimulated: viewModel.barometer.isSimulated,
             hasBarometer: DeviceCapability.hasBarometer,
             pressure: viewModel.displayPressure,
-            pressureUnit: viewModel.settings.pressureDisplayMode.shorthand,
+            pressureMode: viewModel.settings.pressureDisplayMode,
             isMSLP: viewModel.settings.mslpEnabled,
             isCalibrated: viewModel.settings.isCalibrated,
             calibrationStation: viewModel.settings.calibrationStationID,
@@ -306,7 +306,7 @@ struct ContentView: View {
             rainbowWrap: viewModel.rainbowForecast?.isWrapIndicatorActive ?? false,
             radarOffline: !(viewModel.radarStatus?.isOnline ?? true),
             radarSiteID: viewModel.radarStatus?.id,
-            usesImperial: viewModel.settings.unitSystem == .imperial
+            unitSystem: viewModel.settings.unitSystem
         ))
     }
 
@@ -422,7 +422,7 @@ struct ContentView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "mountain.2.fill")
                             .font(.system(size: 9))
-                        Text(String(format: "%.0f m", altitude))
+                        Text(units.elevation(altitude))
                     }
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.textTertiary)
