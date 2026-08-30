@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Coordinates the barometer stream, location fix, weather fetches, NWS
 /// alerts, tornado signature analysis, and Apple Intelligence context for
@@ -44,9 +45,12 @@ final class DashboardViewModel {
     /// confirm an extreme pressure signal.
     private(set) var isRapidPollingActive = false
     private(set) var isCheckingConfirmation = false
+    /// Guards against double-starting sensors when `.task` fires more than
+    /// once (sheets, view identity changes).
+    private(set) var hasStarted = false
 
-    var isTornadoModeEnabled: Bool = UserDefaults.standard.bool(forKey: "stormscope.tornadoMode") {
-        didSet { UserDefaults.standard.set(isTornadoModeEnabled, forKey: "stormscope.tornadoMode") }
+    var isTornadoModeEnabled: Bool = WidgetSnapshotStore.tornadoModeEnabled {
+        didSet { WidgetSnapshotStore.setTornadoMode(isTornadoModeEnabled) }
     }
 
     var assessment: StormAssessment {
@@ -342,6 +346,8 @@ final class DashboardViewModel {
     }
 
     func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         barometer.start()
         if settings.lightningDetectionEnabled {
             magnetometer.start()
@@ -379,8 +385,41 @@ final class DashboardViewModel {
                 self.pushLiveActivityUpdate()
                 self.saveWidgetSnapshot()
                 self.evaluateSurgeState()
+
+                // Widget refresh button: perform a full remote refresh within
+                // a minute of the tap instead of waiting for foreground return.
+                if WidgetSnapshotStore.consumeRefreshRequest() {
+                    await self.refreshRemote()
+                }
+
+                // Widget Tornado Mode toggle: converge on the shared flag.
+                let sharedTornadoMode = WidgetSnapshotStore.tornadoModeEnabled
+                if sharedTornadoMode != self.isTornadoModeEnabled {
+                    self.isTornadoModeEnabled = sharedTornadoMode
+                }
+
                 try? await Task.sleep(for: .seconds(60))
             }
+        }
+    }
+
+    /// Reacts to app lifecycle changes: pauses the lightning sensor in the
+    /// background, restarts it on return, and refreshes remote data plus the
+    /// extreme-event station confirmation immediately instead of waiting for
+    /// the next monitor tick.
+    func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            magnetometer.stop()
+        case .active:
+            applyMagnetometerSetting()
+            guard hasStarted else { return }
+            Task { await refreshRemote() }
+            if isRapidPollingActive {
+                Task { await runConfirmationCheck() }
+            }
+        default:
+            break
         }
     }
 
@@ -547,6 +586,7 @@ final class DashboardViewModel {
                 levelTitle: assessment.level.title,
                 sparkline: sparklineSamples(maxCount: 36),
                 usesImperial: settings.unitSystem == .imperial,
+                alertCount: alerts.count,
                 updatedAt: Date()
             )
         )

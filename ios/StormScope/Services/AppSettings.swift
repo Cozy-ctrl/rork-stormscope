@@ -17,7 +17,26 @@ final class AppSettings {
     private static let lightningDetectionKey = "stormscope.settings.lightningDetection"
     private static let stationsMapExpandedKey = "stormscope.settings.stationsMapExpanded"
     private static let stationsListExpandedKey = "stormscope.settings.stationsListExpanded"
+    private static let radarSectionExpandedKey = "stormscope.settings.radarSectionExpanded"
+    private static let conditionsSectionExpandedKey = "stormscope.settings.conditionsSectionExpanded"
+    private static let stationsSectionExpandedKey = "stormscope.settings.stationsSectionExpanded"
     private static let chartPressureUnitKey = "stormscope.settings.chartPressureUnit"
+
+    /// Whether the "Radar & Outlook" dashboard section is expanded. Defaults
+    /// to open — radar is part of the primary status read.
+    var radarSectionExpanded: Bool {
+        didSet { UserDefaults.standard.set(radarSectionExpanded, forKey: Self.radarSectionExpandedKey) }
+    }
+
+    /// Whether the "Local Conditions" dashboard section is expanded.
+    var conditionsSectionExpanded: Bool {
+        didSet { UserDefaults.standard.set(conditionsSectionExpanded, forKey: Self.conditionsSectionExpandedKey) }
+    }
+
+    /// Whether the "Station Verification" dashboard section is expanded.
+    var stationsSectionExpanded: Bool {
+        didSet { UserDefaults.standard.set(stationsSectionExpanded, forKey: Self.stationsSectionExpandedKey) }
+    }
 
     /// Whether the station map card is currently expanded. Defaults to collapsed
     /// so the dashboard stays compact until the user opens it.
@@ -154,6 +173,20 @@ final class AppSettings {
             : defaults.bool(forKey: Self.lightningDetectionKey)
         stationsMapExpanded = defaults.bool(forKey: Self.stationsMapExpandedKey)
         stationsListExpanded = defaults.bool(forKey: Self.stationsListExpandedKey)
+        radarSectionExpanded = defaults.object(forKey: Self.radarSectionExpandedKey) == nil
+            ? true
+            : defaults.bool(forKey: Self.radarSectionExpandedKey)
+        conditionsSectionExpanded = defaults.bool(forKey: Self.conditionsSectionExpandedKey)
+        stationsSectionExpanded = defaults.bool(forKey: Self.stationsSectionExpandedKey)
+    }
+
+    /// Re-collapses the dashboard's optional sections to their default state.
+    func resetDashboardSections() {
+        radarSectionExpanded = true
+        conditionsSectionExpanded = false
+        stationsSectionExpanded = false
+        stationsMapExpanded = false
+        stationsListExpanded = false
     }
 
     /// Records a calibration offset aligned to a specific NWS station.
@@ -182,6 +215,9 @@ final class AppSettings {
         lightningDetectionEnabled = true
         stationsMapExpanded = false
         stationsListExpanded = false
+        radarSectionExpanded = true
+        conditionsSectionExpanded = false
+        stationsSectionExpanded = false
         chartPressureUnit = .hPa
         clearCalibration()
         UserDefaults.standard.removeObject(forKey: Self.unitsKey)

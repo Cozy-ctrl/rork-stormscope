@@ -35,6 +35,7 @@ nonisolated struct PressureEntry: TimelineEntry {
         levelTitle: "Change Coming",
         sparkline: [1016.1, 1015.8, 1015.4, 1015.1, 1014.6, 1014.2, 1013.8, 1013.5, 1013.2],
         usesImperial: false,
+        alertCount: 0,
         updatedAt: .now
     )
 }
@@ -105,7 +106,8 @@ struct WidgetView: View {
 
     private func mediumView(_ snapshot: WidgetSnapshot) -> some View {
         let tint = StormStyle.tint(for: snapshot.levelRaw)
-        return HStack(spacing: 14) {
+        return VStack(spacing: 6) {
+            HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
                     Image(systemName: StormStyle.icon(for: snapshot.levelRaw))
@@ -152,6 +154,41 @@ struct WidgetView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity)
+        }
+
+        interactiveRow(tint: tint)
+        }
+    }
+
+    /// Bottom strip on the medium widget: forces a fresh snapshot and flips
+    /// Tornado Mode without opening the app.
+    private func interactiveRow(tint: Color) -> some View {
+        HStack(spacing: 10) {
+            Button(intent: RefreshPressureIntent()) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(tint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Refresh pressure")
+
+            Spacer(minLength: 0)
+
+            Button(intent: ToggleTornadoModeIntent()) {
+                HStack(spacing: 4) {
+                    Image(systemName: "tornado")
+                    Text(WidgetSnapshotStore.tornadoModeEnabled ? "Tornado On" : "Tornado Off")
+                }
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(WidgetSnapshotStore.tornadoModeEnabled ? Color(red: 0.016, green: 0.027, blue: 0.055) : Color.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule().fill(WidgetSnapshotStore.tornadoModeEnabled ? tint : Color.secondary.opacity(0.18))
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Toggle Tornado Mode")
         }
     }
 }

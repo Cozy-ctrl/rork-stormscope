@@ -81,7 +81,7 @@ nonisolated final class BackgroundBarometerService {
             let alerts = await self.fetchBackgroundAlerts()
 
             await self.sendBackgroundNotifications(assessment: assessment, alerts: alerts)
-            self.saveBackgroundSnapshot(readings: readings, assessment: assessment)
+            self.saveBackgroundSnapshot(readings: readings, assessment: assessment, alertCount: alerts.count)
 
             task.setTaskCompleted(success: true)
         }
@@ -208,7 +208,8 @@ nonisolated final class BackgroundBarometerService {
 
     private func saveBackgroundSnapshot(
         readings: [PressureReading],
-        assessment: StormAssessment
+        assessment: StormAssessment,
+        alertCount: Int
     ) {
         guard let last = readings.last else { return }
         let units = UserDefaults.standard.string(forKey: "stormscope.settings.units")
@@ -223,6 +224,7 @@ nonisolated final class BackgroundBarometerService {
             levelTitle: assessment.level.title,
             sparkline: sparkline,
             usesImperial: usesImperial,
+            alertCount: alertCount,
             updatedAt: Date()
         )
         WidgetSnapshotStore.save(snapshot)

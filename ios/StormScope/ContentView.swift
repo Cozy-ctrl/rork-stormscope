@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var viewModel = DashboardViewModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingInfo = false
     @State private var isShowingSettings = false
     @State private var isShowingAlerts = false
@@ -31,7 +32,7 @@ struct ContentView: View {
         return ZStack {
             background
             ScrollView {
-                VStack(spacing: 18) {
+                LazyVStack(spacing: 18) {
                     // Status: overall level + official alerts.
                     header
                     StormBannerView(level: assessment.level)
@@ -87,95 +88,119 @@ struct ContentView: View {
                     )
 
                     // Situational awareness: radar/satellite map + SPC outlook.
-                    RadarCardView(
-                        latitude: viewModel.location.latitude,
-                        longitude: viewModel.location.longitude,
-                        alerts: viewModel.alerts,
-                        layerMode: $settings.radarLayerMode,
-                        radarStatus: viewModel.radarStatus
-                    )
-                    OutlookCardView(
-                        outlooks: viewModel.outlooks,
-                        isLoading: viewModel.isLoadingOutlook
-                    )
-
-                    // Optics: deterministic rainbow geometry from sun + rain data.
-                    if let rainbow = viewModel.rainbowForecast, rainbow.isDisplayWorthy {
-                        RainbowCardView(forecast: rainbow)
+                    DashboardSection(
+                        title: "Radar & Outlook",
+                        icon: "antenna.radiowaves.left.and.right",
+                        tint: Theme.cyan,
+                        isExpanded: $settings.radarSectionExpanded
+                    ) {
+                        RadarCardView(
+                            latitude: viewModel.location.latitude,
+                            longitude: viewModel.location.longitude,
+                            alerts: viewModel.alerts,
+                            layerMode: $settings.radarLayerMode,
+                            radarStatus: viewModel.radarStatus
+                        )
+                        OutlookCardView(
+                            outlooks: viewModel.outlooks,
+                            isLoading: viewModel.isLoadingOutlook
+                        )
                     }
 
-                    // Local conditions summary from the nearest station + device sensor comparison.
-                    WeatherStripView(
-                        weather: viewModel.weather,
-                        sensorDelta: viewModel.sensorVsStationDelta,
-                        units: units,
-                        pressureMode: pressureMode,
-                        isMSLP: viewModel.settings.mslpEnabled,
-                        isLoading: viewModel.isLoadingWeather,
-                        errorMessage: viewModel.weatherError
-                    )
-
-                    // Ground truth: observed wind + rainfall accumulation.
-                    StationWindCardView(
-                        stations: viewModel.stations,
-                        weather: viewModel.weather,
-                        units: units
-                    )
-                    PrecipCardView(
-                        weather: viewModel.weather,
-                        stations: viewModel.stations,
-                        units: units
-                    )
+                    // Optics + local conditions + ground-truth observations.
+                    DashboardSection(
+                        title: "Local Conditions",
+                        icon: "cloud.sun.fill",
+                        tint: Theme.green,
+                        isExpanded: $settings.conditionsSectionExpanded
+                    ) {
+                        if let rainbow = viewModel.rainbowForecast, rainbow.isDisplayWorthy {
+                            RainbowCardView(forecast: rainbow)
+                        }
+                        WeatherStripView(
+                            weather: viewModel.weather,
+                            sensorDelta: viewModel.sensorVsStationDelta,
+                            units: units,
+                            pressureMode: pressureMode,
+                            isMSLP: viewModel.settings.mslpEnabled,
+                            isLoading: viewModel.isLoadingWeather,
+                            errorMessage: viewModel.weatherError
+                        )
+                        StationWindCardView(
+                            stations: viewModel.stations,
+                            weather: viewModel.weather,
+                            units: units
+                        )
+                        PrecipCardView(
+                            weather: viewModel.weather,
+                            stations: viewModel.stations,
+                            units: units
+                        )
+                    }
 
                     // Verification: official station readings + spatial map + comparison chart.
-                    StationsCardView(
-                        stations: viewModel.stations,
-                        devicePressure: viewModel.displayPressure,
-                        units: units,
-                        pressureMode: pressureMode,
-                        isLoading: viewModel.isLoadingStations,
-                        errorMessage: viewModel.stationsError,
-                        isExpanded: $settings.stationsListExpanded
-                    )
-                    StationsMapCardView(
-                        stations: viewModel.stations,
-                        deviceLatitude: viewModel.location.latitude,
-                        deviceLongitude: viewModel.location.longitude,
-                        devicePressure: viewModel.displayPressure,
-                        pressureMode: pressureMode,
-                        isLoading: viewModel.isLoadingStations,
-                        errorMessage: viewModel.stationsError,
-                        isExpanded: $settings.stationsMapExpanded
-                    )
-                    if !viewModel.stations.isEmpty {
-                        StationsChartCardView(
+                    DashboardSection(
+                        title: "Station Verification",
+                        icon: "checkmark.seal.fill",
+                        tint: Theme.amber,
+                        isExpanded: $settings.stationsSectionExpanded
+                    ) {
+                        StationsCardView(
                             stations: viewModel.stations,
                             devicePressure: viewModel.displayPressure,
                             units: units,
-                            pressureMode: pressureMode
+                            pressureMode: pressureMode,
+                            isLoading: viewModel.isLoadingStations,
+                            errorMessage: viewModel.stationsError,
+                            isExpanded: $settings.stationsListExpanded
                         )
-                    }
-                    if let devicePressure = viewModel.displayPressure, !viewModel.stations.isEmpty {
-                        DeviceDeltaCardView(
+                        StationsMapCardView(
                             stations: viewModel.stations,
-                            devicePressure: devicePressure,
                             deviceLatitude: viewModel.location.latitude,
                             deviceLongitude: viewModel.location.longitude,
-                            pressureMode: pressureMode
+                            devicePressure: viewModel.displayPressure,
+                            pressureMode: pressureMode,
+                            isLoading: viewModel.isLoadingStations,
+                            errorMessage: viewModel.stationsError,
+                            isExpanded: $settings.stationsMapExpanded
                         )
+                        if !viewModel.stations.isEmpty {
+                            StationsChartCardView(
+                                stations: viewModel.stations,
+                                devicePressure: viewModel.displayPressure,
+                                units: units,
+                                pressureMode: pressureMode
+                            )
+                        }
+                        if let devicePressure = viewModel.displayPressure, !viewModel.stations.isEmpty {
+                            DeviceDeltaCardView(
+                                stations: viewModel.stations,
+                                devicePressure: devicePressure,
+                                deviceLatitude: viewModel.location.latitude,
+                                deviceLongitude: viewModel.location.longitude,
+                                pressureMode: pressureMode
+                            )
+                        }
                     }
                     footer
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 32)
+                .padding(.bottom, 96)
             }
             .refreshable {
                 await viewModel.refreshRemote()
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                actionBar
+                    .padding(.bottom, 4)
+            }
         }
         .task {
             viewModel.start()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            viewModel.handleScenePhase(phase)
         }
         .onAppear {
             // Always start with the station map collapsed for a clean dashboard.
@@ -375,34 +400,6 @@ struct ContentView: View {
                     .foregroundStyle(Theme.textSecondary)
                 }
                 Spacer()
-                Button {
-                    shareReportText = buildReportSnapshot()
-                    isShowingShareSheet = true
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 21, weight: .medium))
-                        .foregroundStyle(Theme.textSecondary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Share weather report")
-                Button {
-                    isShowingInfo = true
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 21, weight: .medium))
-                        .foregroundStyle(Theme.textSecondary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("How it works")
-                Button {
-                    isShowingSettings = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 21, weight: .medium))
-                        .foregroundStyle(Theme.textSecondary)
-                        .frame(width: 44, height: 44)
-                }
-                .accessibilityLabel("Settings")
             }
 
             if viewModel.location.isApproximate {
@@ -447,8 +444,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(sensorChipColor.opacity(0.12))
-        .clipShape(Capsule())
+        .stormGlass(in: Capsule(), tint: sensorChipColor)
     }
 
     private var sensorChipColor: Color {
@@ -510,12 +506,93 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.amber.opacity(0.2), lineWidth: 1))
     }
 
+    // MARK: - Floating Action Bar
+
+    /// Share / info / settings, floating above the content in a single glass
+    /// capsule (navigation-layer glass only, per Apple guidance).
+    private var actionBar: some View {
+        HStack(spacing: 22) {
+            barIcon("square.and.arrow.up", accessibility: "Share weather report") {
+                shareReportText = buildReportSnapshot()
+                isShowingShareSheet = true
+            }
+            barIcon("info.circle", accessibility: "How it works") {
+                isShowingInfo = true
+            }
+            barIcon("gearshape", accessibility: "Settings") {
+                isShowingSettings = true
+            }
+        }
+        .padding(.horizontal, 26)
+        .padding(.vertical, 10)
+        .stormGlass(in: Capsule(), interactive: true)
+    }
+
+    private func barIcon(_ systemImage: String, accessibility: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(accessibility)
+    }
+
     private var locationLabel: String {
         if let name = viewModel.location.placeName {
             if viewModel.location.isApproximate { return "\(name) (approximate)" }
             return viewModel.location.isFallback ? "\(name) (default)" : name
         }
         return "Locating…"
+    }
+}
+
+/// A collapsible group of secondary dashboard cards with a compact header.
+/// Expansion state is persisted through `AppSettings` so the layout survives
+/// relaunches.
+private struct DashboardSection<Content: View>: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.snappy(duration: 0.3)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(tint)
+                    Text(title)
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .kerning(1)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.textTertiary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(title)")
+            .accessibilityAddTraits(.isHeader)
+
+            if isExpanded {
+                VStack(spacing: 18) {
+                    content()
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 }
 

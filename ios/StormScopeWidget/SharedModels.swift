@@ -29,12 +29,30 @@ nonisolated struct WidgetSnapshot: Codable {
     let levelTitle: String
     let sparkline: [Double]
     let usesImperial: Bool
+    let alertCount: Int?
     let updatedAt: Date
 }
 
 nonisolated enum WidgetSnapshotStore {
     static let appGroupID = "group.xyz.stormscope"
     private static let snapshotKey = "stormscope.widget.snapshot"
+    private static let tornadoModeKey = "stormscope.tornadoMode.shared"
+    private static let refreshRequestKey = "stormscope.widget.refreshRequest"
+
+    /// Tornado Mode flag shared with the app through the App Group.
+    static var tornadoModeEnabled: Bool {
+        UserDefaults(suiteName: appGroupID)?.bool(forKey: tornadoModeKey) ?? false
+    }
+
+    static func setTornadoMode(_ enabled: Bool) {
+        UserDefaults(suiteName: appGroupID)?.set(enabled, forKey: tornadoModeKey)
+    }
+
+    /// Flags the running app to perform a full remote refresh on its next
+    /// monitor tick.
+    static func requestRefresh() {
+        UserDefaults(suiteName: appGroupID)?.set(Date().timeIntervalSince1970, forKey: refreshRequestKey)
+    }
 
     static func load() -> WidgetSnapshot? {
         guard let defaults = UserDefaults(suiteName: appGroupID) else {

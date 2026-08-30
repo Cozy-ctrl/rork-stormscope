@@ -25,6 +25,7 @@ struct SettingsView: View {
                 unitsSection
                 notificationsSection
                 calibrationSection
+                dashboardSection
                 dataSection
                 aboutSection
             }
@@ -271,6 +272,22 @@ struct SettingsView: View {
             } else {
                 Text("Aligns your barometer to the nearest NWS station reading, zeroing out factory variance between devices. Storm detection always uses the raw trend, so calibration only changes the displayed numbers.")
             }
+        }
+        .tint(Theme.cyan)
+    }
+
+    private var dashboardSection: some View {
+        Section {
+            Button {
+                viewModel.settings.resetDashboardSections()
+            } label: {
+                Label("Reset Collapsed Sections", systemImage: "rectangle.expand.vertical")
+            }
+            .listRowBackground(Theme.panel)
+        } header: {
+            Text("Dashboard")
+        } footer: {
+            Text("Re-expands the radar, local conditions, and station sections on the main screen.")
         }
         .tint(Theme.cyan)
     }
