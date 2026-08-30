@@ -133,6 +133,10 @@ nonisolated struct StormReportGenerator {
         if let p = snapshot.pressure {
             let mslpNote = snapshot.isMSLP ? " (MSLP)" : ""
             lines.append("Current: \(String(format: "%.1f", p)) \(snapshot.pressureUnit)\(mslpNote)")
+        } else if !snapshot.hasBarometer {
+            lines.append("Current: simulated demo feed — no live readings")
+        } else {
+            lines.append("Current: collecting first readings…")
         }
         if let rate = snapshot.ratePerHour {
             lines.append(String(format: "1-hour trend: %+.2f \(snapshot.pressureUnit)/h", rate))
@@ -145,6 +149,8 @@ nonisolated struct StormReportGenerator {
         }
         if let d6 = snapshot.delta6h {
             lines.append(String(format: "6-hour change: %+.1f \(snapshot.pressureUnit)", d6))
+        } else if snapshot.delta1h == nil, snapshot.delta3h == nil {
+            lines.append("Trends available after a few minutes of monitoring.")
         }
         lines.append("Status: \(snapshot.levelTitle)")
         if snapshot.escalatedByCorroboration, !snapshot.corroborators.isEmpty {
@@ -177,6 +183,12 @@ nonisolated struct StormReportGenerator {
 
         // ── Weather conditions ──
         lines.append("── CONDITIONS ──")
+        let hasAnyConditions = snapshot.weatherDescription != nil
+            || snapshot.temperature != nil || snapshot.windSpeed != nil
+            || snapshot.humidity != nil || snapshot.cape != nil
+        if !hasAnyConditions {
+            lines.append("Station conditions still loading — open StormScope to refresh.")
+        }
         if let desc = snapshot.weatherDescription {
             lines.append("Sky: \(desc)")
         }

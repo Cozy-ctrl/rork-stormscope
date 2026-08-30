@@ -13,7 +13,9 @@ struct ContentView: View {
     @State private var isShowingAlerts = false
     @State private var isShowingDisclaimer = false
     @State private var isShowingShareSheet = false
-    @State private var shareReportText: String = ""
+    /// Built fresh at tap time and presented via `sheet(item:)` so the sheet
+    /// can never render before the report content exists.
+    @State private var shareReport: ShareReport?
 
     private var units: UnitSystem {
         viewModel.settings.unitSystem
@@ -92,6 +94,7 @@ struct ContentView: View {
                         title: "Radar & Outlook",
                         icon: "antenna.radiowaves.left.and.right",
                         tint: Theme.cyan,
+                        isLoading: viewModel.isLoadingOutlook,
                         isExpanded: $settings.radarSectionExpanded
                     ) {
                         RadarCardView(
@@ -112,6 +115,7 @@ struct ContentView: View {
                         title: "Local Conditions",
                         icon: "cloud.sun.fill",
                         tint: Theme.green,
+                        isLoading: viewModel.isLoadingWeather,
                         isExpanded: $settings.conditionsSectionExpanded
                     ) {
                         if let rainbow = viewModel.rainbowForecast, rainbow.isDisplayWorthy {
@@ -143,6 +147,8 @@ struct ContentView: View {
                         title: "Station Verification",
                         icon: "checkmark.seal.fill",
                         tint: Theme.amber,
+                        isLoading: viewModel.isLoadingStations,
+                        skeletonCount: 3,
                         isExpanded: $settings.stationsSectionExpanded
                     ) {
                         StationsCardView(
@@ -259,7 +265,9 @@ struct ContentView: View {
             )
         }
         .sheet(isPresented: $isShowingShareSheet) {
-            ShareSheet(activityItems: [shareReportText])
+            if let report = shareReport {
+                ShareSheet(activityItems: [report.text])
+            }
         }
         .preferredColorScheme(.dark)
     }
@@ -513,7 +521,8 @@ struct ContentView: View {
     private var actionBar: some View {
         HStack(spacing: 22) {
             barIcon("square.and.arrow.up", accessibility: "Share weather report") {
-                shareReportText = buildReportSnapshot()
+                let report = ShareReport(text: buildReportSnapshot())
+                shareReport = report
                 isShowingShareSheet = true
             }
             barIcon("info.circle", accessibility: "How it works") {
@@ -548,13 +557,24 @@ struct ContentView: View {
     }
 }
 
+/// Identifiable wrapper so the share sheet presents with its report text
+/// already built, instead of racing a `String` state update.
+struct ShareReport: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
 /// A collapsible group of secondary dashboard cards with a compact header.
 /// Expansion state is persisted through `AppSettings` so the layout survives
-/// relaunches.
+/// relaunches. While `isLoading` is true, shimmering skeleton placeholders
+/// hold the expanded height so the section doesn't glitch as network cards
+/// settle.
 private struct DashboardSection<Content: View>: View {
     let title: String
     let icon: String
     let tint: Color
+    var isLoading: Bool = false
+    var skeletonCount: Int = 2
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
 
@@ -587,10 +607,19 @@ private struct DashboardSection<Content: View>: View {
             .accessibilityAddTraits(.isHeader)
 
             if isExpanded {
-                VStack(spacing: 18) {
-                    content()
+                if isLoading {
+                    VStack(spacing: 18) {
+                        ForEach(0..<max(1, skeletonCount), id: \.self) { index in
+                            SkeletonCard(height: index == 0 ? 190 : 150, tint: tint)
+                        }
+                    }
+                    .transition(.opacity)
+                } else {
+                    VStack(spacing: 18) {
+                        content()
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
