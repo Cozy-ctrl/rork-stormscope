@@ -566,9 +566,16 @@ struct ShareReport: Identifiable {
 
 /// A collapsible group of secondary dashboard cards with a compact header.
 /// Expansion state is persisted through `AppSettings` so the layout survives
-/// relaunches. While `isLoading` is true, shimmering skeleton placeholders
-/// hold the expanded height so the section doesn't glitch as network cards
-/// settle.
+/// relaunches.
+///
+/// Animation notes (tuned for `LazyVStack`):
+/// - Opacity-only transitions — `.move` transitions make lazy-stack neighbors
+///   reflow mid-animation and read as glitchy.
+/// - One keyed animation on the section root drives height + chevron together.
+/// - Heavy cards (maps, charts) are not built until the expand animation
+///   finishes; shimmering skeletons hold the height in the meantime, so view
+///   construction never hitches the animation (WWDC lazy-stack guidance:
+///   avoid changing layout while subviews appear).
 private struct DashboardSection<Content: View>: View {
     let title: String
     let icon: String
@@ -578,48 +585,96 @@ private struct DashboardSection<Content: View>: View {
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
 
+    /// How long heavy content waits before building — just past the expand
+    /// animation so construction lands after the height settles.
+    /// (Instance constants — static stored properties aren't allowed on
+    /// generic types.)
+    private let contentMountDelay: Duration = .milliseconds(320)
+    private let expandAnimation: Animation = .snappy(duration: 0.3)
+
+    @State private var isContentMounted = false
+    @State private var mountTask: Task<Void, Never>?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button {
-                withAnimation(.snappy(duration: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(tint)
-                    Text(title)
-                        .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .kerning(1)
-                        .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Theme.textTertiary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                }
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(title)")
-            .accessibilityAddTraits(.isHeader)
+            headerButton
 
             if isExpanded {
-                if isLoading {
-                    VStack(spacing: 18) {
-                        ForEach(0..<max(1, skeletonCount), id: \.self) { index in
-                            SkeletonCard(height: index == 0 ? 190 : 150, tint: tint)
-                        }
-                    }
+                expandedBody
                     .transition(.opacity)
-                } else {
-                    VStack(spacing: 18) {
-                        content()
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .compositingGroup()
+            }
+        }
+        .animation(expandAnimation, value: isExpanded)
+        .onAppear {
+            // Sections that launch expanded (or scroll back into view) mount
+            // their content immediately — no skeleton re-flash.
+            if isExpanded && !isContentMounted {
+                isContentMounted = true
+            }
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            if expanded {
+                scheduleContentMount()
+            } else {
+                mountTask?.cancel()
+                mountTask = nil
+                isContentMounted = false
+            }
+        }
+    }
+
+    private var headerButton: some View {
+        Button {
+            isExpanded.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .kerning(1)
+                    .foregroundStyle(Theme.textSecondary)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+            }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(title)")
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    @ViewBuilder
+    private var expandedBody: some View {
+        if isLoading || !isContentMounted {
+            VStack(spacing: 18) {
+                ForEach(0..<max(1, skeletonCount), id: \.self) { index in
+                    SkeletonCard(height: index == 0 ? 190 : 150, tint: tint)
                 }
+            }
+        } else {
+            VStack(spacing: 18) {
+                content()
+            }
+        }
+    }
+
+    /// Delays building the real cards until the expand animation has settled,
+    /// then crossfades from the skeletons.
+    private func scheduleContentMount() {
+        mountTask?.cancel()
+        isContentMounted = false
+        mountTask = Task {
+            try? await Task.sleep(for: contentMountDelay)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.22)) {
+                isContentMounted = true
             }
         }
     }
