@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @State private var viewModel = DashboardViewModel()
@@ -95,6 +96,7 @@ struct ContentView: View {
                         icon: "antenna.radiowaves.left.and.right",
                         tint: Theme.cyan,
                         isLoading: viewModel.isLoadingOutlook,
+                        lastUpdated: viewModel.lastOutlookUpdate,
                         isExpanded: $settings.radarSectionExpanded
                     ) {
                         RadarCardView(
@@ -116,6 +118,7 @@ struct ContentView: View {
                         icon: "cloud.sun.fill",
                         tint: Theme.green,
                         isLoading: viewModel.isLoadingWeather,
+                        lastUpdated: viewModel.lastWeatherUpdate,
                         isExpanded: $settings.conditionsSectionExpanded
                     ) {
                         if let rainbow = viewModel.rainbowForecast, rainbow.isDisplayWorthy {
@@ -149,6 +152,7 @@ struct ContentView: View {
                         tint: Theme.amber,
                         isLoading: viewModel.isLoadingStations,
                         skeletonCount: 3,
+                        lastUpdated: viewModel.lastStationsUpdate,
                         isExpanded: $settings.stationsSectionExpanded
                     ) {
                         StationsCardView(
@@ -196,6 +200,7 @@ struct ContentView: View {
             }
             .refreshable {
                 await viewModel.refreshRemote()
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 actionBar
@@ -582,6 +587,7 @@ private struct DashboardSection<Content: View>: View {
     let tint: Color
     var isLoading: Bool = false
     var skeletonCount: Int = 2
+    var lastUpdated: Date?
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
 
@@ -637,6 +643,20 @@ private struct DashboardSection<Content: View>: View {
                     .kerning(1)
                     .foregroundStyle(Theme.textSecondary)
                 Spacer()
+                if let lastUpdated {
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 9, weight: .medium))
+                        // Live-updating relative time ("2 min ago").
+                        Text(lastUpdated, style: .relative)
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                        Text("ago")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+                    .accessibilityLabel("Updated \(lastUpdated.formatted(.relative(presentation: .named))) ago")
+                }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Theme.textTertiary)

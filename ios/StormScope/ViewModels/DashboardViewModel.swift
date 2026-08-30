@@ -36,6 +36,12 @@ final class DashboardViewModel {
     private(set) var outlooks: [SPCOutlook] = []
     private(set) var isLoadingOutlook = false
 
+    /// Last successful remote fetch per data domain, surfaced as
+    /// "Updated Xm ago" in each dashboard section header.
+    private(set) var lastWeatherUpdate: Date?
+    private(set) var lastOutlookUpdate: Date?
+    private(set) var lastStationsUpdate: Date?
+
     /// Health of the nearest NEXRAD site; nil while unknown or on lookup failure.
     private(set) var radarStatus: RadarSiteStatus?
 
@@ -607,6 +613,7 @@ final class DashboardViewModel {
         weatherError = nil
         do {
             weather = try await weatherService.fetch(latitude: lat, longitude: lon)
+            lastWeatherUpdate = Date()
         } catch {
             weatherError = "Couldn't load local weather. Pull to retry."
             print("[Weather] Fetch failed: \(error.localizedDescription)")
@@ -634,6 +641,9 @@ final class DashboardViewModel {
         guard let lat = location.latitude, let lon = location.longitude else { return }
         isLoadingOutlook = true
         outlooks = await outlookService.fetchOutlooks(latitude: lat, longitude: lon)
+        if !outlooks.isEmpty {
+            lastOutlookUpdate = Date()
+        }
         isLoadingOutlook = false
     }
 
@@ -648,6 +658,7 @@ final class DashboardViewModel {
         stationsError = nil
         do {
             stations = try await stationsService.fetchNearbyObservations(latitude: lat, longitude: lon)
+            lastStationsUpdate = Date()
             if stations.isEmpty {
                 stationsError = "No recent observations from nearby stations."
             }
