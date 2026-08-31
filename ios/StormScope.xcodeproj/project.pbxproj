@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		XX39411F467A0051ED0035XX /* StormScopeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = XXA89470C0E7BAAEF4BF36XX /* StormScopeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		XXD63457E41125E77BACFDXX /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = XX8F6E1A701EA04CDCEA3DXX /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,14 +57,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		XX484B5C007B14B129DF82XX /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		XX484B5C007B14B129DF82XX /* Exceptions for "StormScopeWidget" folder in "StormScopeWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = XX404E5CC5CD621EB44125XX /* StormScopeWidget */;
 		};
-		XXA1B2C3D4E5F6A7B8C9D0E1XX /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		XXA1B2C3D4E5F6A7B8C9D0E1XX /* Exceptions for "StormScope" folder in "StormScope" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -73,12 +74,30 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		105FC57C2E9EAD3100EA8BCF /* StormScope */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StormScope;
+			sourceTree = "<group>";
+			exceptions = (
+				XXA1B2C3D4E5F6A7B8C9D0E1XX /* Exceptions for "StormScope" folder in "StormScope" target */,
+			);
+		};
+		105FC58C2E9EAD3200EA8BCF /* StormScopeTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StormScopeTests;
+			sourceTree = "<group>";
+		};
+		105FC5962E9EAD3200EA8BCF /* StormScopeUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StormScopeUITests;
+			sourceTree = "<group>";
+		};
 		XX31FFBE0335BA0507315DXX /* StormScopeWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = StormScopeWidget;
 			sourceTree = "<group>";
 			exceptions = (
-				XX484B5C007B14B129DF82XX /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				XX484B5C007B14B129DF82XX /* Exceptions for "StormScopeWidget" folder in "StormScopeWidget" target */,
 			);
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -88,6 +107,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				XXD63457E41125E77BACFDXX /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,27 +133,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		105FC57C2E9EAD3100EA8BCF /* StormScope */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = StormScope;
-			sourceTree = "<group>";
-			exceptions = (
-				XXA1B2C3D4E5F6A7B8C9D0E1XX /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
-		};
-		105FC58C2E9EAD3200EA8BCF /* StormScopeTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = StormScopeTests;
-			sourceTree = "<group>";
-		};
-		105FC5962E9EAD3200EA8BCF /* StormScopeUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = StormScopeUITests;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXGroup section */
 		105FC5712E9EAD3100EA8BCF = {
@@ -180,6 +179,7 @@
 			);
 			name = StormScope;
 			packageProductDependencies = (
+				XX8F6E1A701EA04CDCEA3DXX /* RevenueCat */,
 			);
 			productName = StormScope;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* StormScope.app */;
@@ -306,6 +306,9 @@
 				105FC5922E9EAD3200EA8BCF /* StormScopeUITests */,
 				XX404E5CC5CD621EB44125XX /* StormScopeWidget */,
 			);
+			packageReferences = (
+				XX56D7F10BAEE1D3529BF9XX /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 		};
 /* End PBXProject section */
 
@@ -425,7 +428,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -489,7 +492,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -519,7 +522,7 @@
 				CODE_SIGN_ENTITLEMENTS = StormScope/StormScope.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StormScope/Info.plist;
@@ -558,7 +561,7 @@
 				CODE_SIGN_ENTITLEMENTS = StormScope/StormScope.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = StormScope/Info.plist;
@@ -595,7 +598,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0.0;
@@ -617,7 +620,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0.0;
@@ -638,7 +641,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.stormscope.uitests;
@@ -658,7 +661,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.stormscope.uitests;
@@ -678,7 +681,7 @@
 			buildSettings = {
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.stormscope.stormscopewidget;
 				PRODUCT_NAME = StormScopeWidget;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				SWIFT_VERSION = 5.0;
 				SDKROOT = iphoneos;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -702,7 +705,7 @@
 			buildSettings = {
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.stormscope.stormscopewidget;
 				PRODUCT_NAME = StormScopeWidget;
-				DEVELOPMENT_TEAM = "6HMF4QBQ5Q";
+				DEVELOPMENT_TEAM = 6HMF4QBQ5Q;
 				SWIFT_VERSION = 5.0;
 				SDKROOT = iphoneos;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -770,6 +773,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		XX56D7F10BAEE1D3529BF9XX /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		XX8F6E1A701EA04CDCEA3DXX /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = XX56D7F10BAEE1D3529BF9XX /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 105FC5722E9EAD3100EA8BCF /* Project object */;
 }

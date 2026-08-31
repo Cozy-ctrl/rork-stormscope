@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     let viewModel: DashboardViewModel
+    let store: StoreViewModel
     let readingsCount: Int
     let onDeleteData: () -> Void
 
@@ -14,6 +15,7 @@ struct SettingsView: View {
     @State private var didDeleteData = false
     @State private var didCalibrate = false
     @State private var isShowingShareSheet = false
+    @State private var isShowingPaywall = false
     @State private var exportItem: Any? = nil
 
     var body: some View {
@@ -23,6 +25,7 @@ struct SettingsView: View {
                     noBarometerNotice
                 }
                 unitsSection
+                proSection
                 notificationsSection
                 calibrationSection
                 dashboardSection
@@ -44,6 +47,9 @@ struct SettingsView: View {
                 if let item = exportItem {
                     ShareSheet(activityItems: [item])
                 }
+            }
+            .sheet(isPresented: $isShowingPaywall) {
+                PaywallView(store: store)
             }
         }
         .preferredColorScheme(.dark)
@@ -116,6 +122,57 @@ struct SettingsView: View {
                 Text("Station pressure varies with altitude — expect readings ~1.2 hPa lower for every 100 m of elevation. Enable MSLP to normalize to sea level.\n\nTemperature, wind, and distance follow the Metric / Imperial toggle. Pressure and chart units are set independently.")
             }
         }
+    }
+
+    // MARK: - Pro
+
+    /// Ownership, trial countdown, and unlock/restore entry points.
+    private var proSection: some View {
+        Section {
+            if store.isPremium {
+                LabeledContent {
+                    Text("Lifetime")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.green)
+                } label: {
+                    Label("StormScope Pro", systemImage: "checkmark.seal.fill")
+                }
+                .listRowBackground(Theme.panel)
+            } else {
+                LabeledContent {
+                    if store.isTrialActive {
+                        Text("\(store.trialDaysRemaining) day\(store.trialDaysRemaining == 1 ? "" : "s") left")
+                            .foregroundStyle(Theme.textSecondary)
+                            .monospacedDigit()
+                    } else {
+                        Text("Ended")
+                            .foregroundStyle(Theme.amber)
+                    }
+                } label: {
+                    Label("Full-Access Trial", systemImage: "hourglass")
+                }
+                .listRowBackground(Theme.panel)
+
+                Button {
+                    isShowingPaywall = true
+                } label: {
+                    Label("Unlock Pro — One-Time Purchase", systemImage: "lock.open.fill")
+                }
+                .listRowBackground(Theme.panel)
+            }
+
+            Button {
+                Task { await store.restore() }
+            } label: {
+                Label("Restore Purchases", systemImage: "arrow.clockwise.circle")
+            }
+            .listRowBackground(Theme.panel)
+        } header: {
+            Text("StormScope Pro")
+        } footer: {
+            Text("Pro unlocks Live Feedback, radar & SPC outlook imagery, and data exports with a single one-time payment. Storm monitoring, NWS alerts, and lightning detection stay free forever.")
+        }
+        .tint(Theme.cyan)
     }
 
     private var notificationsSection: some View {
@@ -304,7 +361,7 @@ struct SettingsView: View {
             .listRowBackground(Theme.panel)
 
             Button {
-                exportCSV()
+                handleExportTap(exportCSV)
             } label: {
                 Label("Export Pressure Data (CSV)", systemImage: "tablecells")
             }
@@ -312,7 +369,7 @@ struct SettingsView: View {
             .listRowBackground(Theme.panel)
 
             Button {
-                exportJSON()
+                handleExportTap(exportJSON)
             } label: {
                 Label("Export Full Report (JSON)", systemImage: "doc.text.fill")
             }
@@ -341,7 +398,7 @@ struct SettingsView: View {
         } header: {
             Text("Data")
         } footer: {
-            Text("StormScope stores your barometer history only on this device. Nothing is uploaded — deleting removes it permanently.")
+            Text("StormScope stores your barometer history only on this device. Nothing is uploaded — deleting removes it permanently. Exporting requires StormScope Pro after the free trial.")
         }
     }
 
@@ -443,6 +500,15 @@ struct SettingsView: View {
     }
 
     // MARK: - Export
+
+    /// Exports are a gated feature: opens the paywall instead when locked.
+    private func handleExportTap(_ action: @escaping () -> Void) {
+        guard store.isUnlocked else {
+            isShowingPaywall = true
+            return
+        }
+        action()
+    }
 
     private func exportCSV() {
         let readings = viewModel.barometer.readings
@@ -592,5 +658,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(viewModel: DashboardViewModel(), readingsCount: 214, onDeleteData: {})
+    SettingsView(viewModel: DashboardViewModel(), store: StoreViewModel(), readingsCount: 214, onDeleteData: {})
 }

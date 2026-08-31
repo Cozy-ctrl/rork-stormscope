@@ -8,12 +8,14 @@ import UIKit
 
 struct ContentView: View {
     @State private var viewModel = DashboardViewModel()
+    @State private var store = StoreViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingInfo = false
     @State private var isShowingSettings = false
     @State private var isShowingAlerts = false
     @State private var isShowingDisclaimer = false
     @State private var isShowingShareSheet = false
+    @State private var isShowingPaywall = false
     /// Built fresh at tap time and presented via `sheet(item:)` so the sheet
     /// can never render before the report content exists.
     @State private var shareReport: ShareReport?
@@ -38,6 +40,9 @@ struct ContentView: View {
                 LazyVStack(spacing: 18) {
                     // Status: overall level + official alerts.
                     header
+                    if !store.isPremium {
+                        TrialBannerView(store: store) { isShowingPaywall = true }
+                    }
                     StormBannerView(level: assessment.level)
                     if viewModel.isRapidPollingActive {
                         EventConfirmationCardView(
@@ -84,11 +89,20 @@ struct ContentView: View {
                     if DeviceCapability.hasMagnetometer && viewModel.settings.lightningDetectionEnabled {
                         LightningCardView(magnetometer: viewModel.magnetometer)
                     }
-                    AIInsightCardView(
-                        contextSummary: viewModel.intelligenceContext,
-                        refreshKey: viewModel.intelligenceKey,
-                        fallbackText: assessment.level.detail
-                    )
+                    if store.isUnlocked {
+                        AIInsightCardView(
+                            contextSummary: viewModel.intelligenceContext,
+                            refreshKey: viewModel.intelligenceKey,
+                            fallbackText: assessment.level.detail
+                        )
+                    } else {
+                        PremiumTeaserCard(
+                            icon: "apple.intelligence",
+                            title: "Live Feedback",
+                            message: "On-device AI turns your pressure trend into plain-language storm guidance.",
+                            onUnlock: { isShowingPaywall = true }
+                        )
+                    }
 
                     // Situational awareness: radar/satellite map + SPC outlook.
                     DashboardSection(
@@ -99,17 +113,27 @@ struct ContentView: View {
                         lastUpdated: viewModel.lastOutlookUpdate,
                         isExpanded: $settings.radarSectionExpanded
                     ) {
-                        RadarCardView(
-                            latitude: viewModel.location.latitude,
-                            longitude: viewModel.location.longitude,
-                            alerts: viewModel.alerts,
-                            layerMode: $settings.radarLayerMode,
-                            radarStatus: viewModel.radarStatus
-                        )
-                        OutlookCardView(
-                            outlooks: viewModel.outlooks,
-                            isLoading: viewModel.isLoadingOutlook
-                        )
+                        if store.isUnlocked {
+                            RadarCardView(
+                                latitude: viewModel.location.latitude,
+                                longitude: viewModel.location.longitude,
+                                alerts: viewModel.alerts,
+                                layerMode: $settings.radarLayerMode,
+                                radarStatus: viewModel.radarStatus
+                            )
+                            OutlookCardView(
+                                outlooks: viewModel.outlooks,
+                                isLoading: viewModel.isLoadingOutlook
+                            )
+                        } else {
+                            PremiumTeaserCard(
+                                icon: "antenna.radiowaves.left.and.right",
+                                title: "Radar & SPC Outlook",
+                                message: "NEXRAD radar imagery and Storm Prediction Center convective outlooks for your area.",
+                                minHeight: 190,
+                                onUnlock: { isShowingPaywall = true }
+                            )
+                        }
                     }
 
                     // Optics + local conditions + ground-truth observations.
@@ -212,6 +236,11 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             viewModel.handleScenePhase(phase)
+            // Re-validate the entitlement when returning to the foreground
+            // so gating reflects purchases made outside the app.
+            if phase == .active {
+                Task { await store.checkStatus() }
+            }
         }
         .onAppear {
             // Always start with the station map collapsed for a clean dashboard.
@@ -265,9 +294,13 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingSettings) {
             SettingsView(
                 viewModel: viewModel,
+                store: store,
                 readingsCount: viewModel.barometer.readings.count,
                 onDeleteData: { viewModel.deleteAllData() }
             )
+        }
+        .sheet(isPresented: $isShowingPaywall) {
+            PaywallView(store: store)
         }
         .sheet(isPresented: $isShowingShareSheet) {
             if let report = shareReport {
@@ -523,12 +556,20 @@ struct ContentView: View {
 
     /// Share / info / settings, floating above the content in a single glass
     /// capsule (navigation-layer glass only, per Apple guidance).
+    private func handleShareTap() {
+        guard store.isUnlocked else {
+            isShowingPaywall = true
+            return
+        }
+        let report = ShareReport(text: buildReportSnapshot())
+        shareReport = report
+        isShowingShareSheet = true
+    }
+
     private var actionBar: some View {
         HStack(spacing: 22) {
             barIcon("square.and.arrow.up", accessibility: "Share weather report") {
-                let report = ShareReport(text: buildReportSnapshot())
-                shareReport = report
-                isShowingShareSheet = true
+                handleShareTap()
             }
             barIcon("info.circle", accessibility: "How it works") {
                 isShowingInfo = true
