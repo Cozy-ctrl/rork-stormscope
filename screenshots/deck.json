@@ -1,0 +1,59 @@
+{
+  "theme": {
+    "style": "A dark supercell world: near-black storm navy and slate charcoal skies broken by electric cyan pressure light and hot amber-warning glow. Lighting is dramatic and volumetric, like lightning flashing behind deep cloud decks, with soft atmospheric haze, fine rain-grain texture and glassy instrument-panel reflections. Backgrounds stay moody and calm in the upper third so headlines read like warning text on a radar console.",
+    "headlineFont": "font-family: 'Inter', sans-serif — @import url('https://fonts.googleapis.com/css2?family=Inter:wght@800;900&display=swap')",
+    "headlineFontSize": 120,
+    "mockupIds": {
+      "iphone": "deep-blue",
+      "ipad": "space-gray"
+    },
+    "palette": {
+      "primary": "#0A0F1A",
+      "secondary": "#1E5F86",
+      "accent": "#00E5FF"
+    },
+    "layoutId": "hero-clipped"
+  },
+  "slides": [
+    {
+      "label": "Dashboard",
+      "backgroundPrompt": "Abstract digital art of a vast dark atmosphere with sweeping curved bands of deep storm navy and slate charcoal rolling across the frame, pierced by a single soft electric cyan light arc rising from the lower right. Volumetric haze and fine rain-like grain drift through the scene, dramatic rim lighting from below, subtle glassy reflections layered in the midground, upper 30 percent deep and near-black for text overlay. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups.no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/6241dfb2-0127-4a7d-a8ac-c0302770bab0.png"
+    },
+    {
+      "label": "Rainbow Forecast",
+      "backgroundPrompt": "Abstract digital art of long horizontal ribbons of luminous color stretched across a near-black field, flowing from deep indigo through teal and electric cyan into a thin band of warm amber at the lower edge. Soft volumetric light glides left to right, gentle motion blur on the ribbon ends, depth of field softening the outer corners, the upper region calm and unlit. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/73b3a0aa-7e0f-4e2e-b4cd-ede746f18751.png"
+    },
+    {
+      "label": "Radar & Outlook",
+      "backgroundPrompt": "3D rendered scene of concentric translucent glass rings expanding outward across a deep obsidian-navy void, each ring edge catching a hair-thin electric cyan highlight. A diffuse teal glow pools in the lower center, faint particulate mist floats between layers, cinematic lighting from the lower left, top of the frame fading to pure black. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/c2b6c5b0-3844-4924-bd03-9b09aa62296c.png"
+    },
+    {
+      "label": "Alerts & Lightning",
+      "backgroundPrompt": "Abstract digital art of jagged shards of hot amber and white light fracturing diagonally across a dense charcoal-navy storm field, with sharp bright cores fading into cyan-tinted haze. Dramatic high-contrast flash lighting from the upper right edge only, thick atmospheric smoke and fine grain texture, deep shadow occupying the upper left for headline space. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/b4cdf3ed-5329-45d3-9c84-608b65e72e1e.png"
+    },
+    {
+      "label": "AI Insight",
+      "backgroundPrompt": "Abstract digital art of a single vast softly glowing orb of pale cyan light diffusing through layers of dark blue-grey mist in the lower third of the frame, surrounded by drifting translucent veils. Gentle even illumination with a faint amber rim on the right, silky smooth gradients, subtle film grain, the upper portion open, dark and uncluttered. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/0eb725ec-840d-44ff-9a7d-b40850c35984.png"
+    },
+    {
+      "label": "Paywall",
+      "backgroundPrompt": "3D rendered scene of stacked angular panels of polished dark glass and brushed graphite rising from the bottom of the frame, their beveled edges lined with thin electric cyan and warm amber light. Cinematic key light from the top-left grazing the surfaces, deep shadow valleys between panels for dramatic depth, fine metallic micro-texture, the top of the frame dissolving into near-black storm navy. 8K quality, ultra smooth gradients, premium feel, no text, no letters, no UI elements, no device mockups",
+      "backgroundUrl": "https://r2-pub.rork.com/app-store-screenshots/1a1cedfc-1fc1-4ad6-96ad-1bcc428d7555.png"
+    }
+  ],
+  "headlines": {
+    "en": {
+      "Dashboard": "Read The<br>Pressure",
+      "Rainbow Forecast": "Hours<br>Ahead",
+      "Radar & Outlook": "Radar<br>Built In",
+      "Alerts & Lightning": "Warnings<br>Instantly",
+      "AI Insight": "Plain<br>Language",
+      "Paywall": "Go Pro"
+    }
+  }
+}
