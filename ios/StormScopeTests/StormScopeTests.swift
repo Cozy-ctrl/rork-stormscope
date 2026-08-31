@@ -303,15 +303,15 @@ struct StormScopeTests {
 
     // MARK: - ProAccess: trial countdown & gating
 
-    /// Fresh first launch: trial runs the full 3 days and unlocks everything.
-    @Test func freshTrialIsActiveWithThreeDaysRemaining() {
+    /// Fresh first launch: trial runs the full 7 days and unlocks everything.
+    @Test func freshTrialIsActiveWithSevenDaysRemaining() {
         let access = ProAccess(
             isPremium: false,
             trialEndDate: ProAccess.trialEnd(from: now),
             now: now
         )
         #expect(access.isTrialActive)
-        #expect(access.trialDaysRemaining == 3)
+        #expect(access.trialDaysRemaining == 7)
         #expect(access.isUnlocked)
     }
 
@@ -355,8 +355,8 @@ struct StormScopeTests {
         #expect(access.isUnlocked)
     }
 
-    /// Trial deadline lands exactly on start + 3 days.
-    @Test func trialEndIsExactlyThreeDaysFromStart() {
+    /// Trial deadline lands exactly on start + 7 days.
+    @Test func trialEndIsExactlySevenDaysFromStart() {
         #expect(ProAccess.trialEnd(from: now).timeIntervalSince(now) == ProAccess.trialDuration)
     }
 

@@ -6,8 +6,8 @@ import RevenueCat
 /// unit tests can exercise trial countdowns and unlock decisions without
 /// constructing `StoreViewModel` (which configures the SDK).
 struct ProAccess {
-    /// Full-access trial length: 3 days from first launch on this device.
-    static let trialDuration: TimeInterval = 3 * 24 * 3600
+    /// Full-access trial length: 7 days from first launch on this device.
+    static let trialDuration: TimeInterval = 7 * 24 * 3600
 
     let isPremium: Bool
     let trialEndDate: Date
@@ -35,7 +35,7 @@ struct ProAccess {
 /// per-device full-access trial. Shared as a single instance from `ContentView`.
 ///
 /// Gating model:
-/// - Every feature is free for the first 3 days per device.
+/// - Every feature is free for the first 7 days per device.
 /// - After that, heavy features (AI Insight, radar/SPC outlook imagery, data
 ///   exports & report sharing) require the one-time "premium" entitlement.
 /// - Life-safety basics never lock and never consult this object.
@@ -78,7 +78,7 @@ final class StoreViewModel {
         ProAccess(isPremium: isPremium, trialEndDate: trialEndDate, now: Date())
     }
 
-    /// Whether the 3-day full-access trial is still running.
+    /// Whether the 7-day full-access trial is still running.
     var isTrialActive: Bool { access.isTrialActive }
 
     /// Whole days of full access remaining (0 once expired).

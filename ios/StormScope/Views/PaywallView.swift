@@ -1,9 +1,9 @@
 import SwiftUI
 import RevenueCat
 
-/// Dark, storm-themed paywall for the one-time StormScope Pro lifetime
-/// unlock. Lists the packages from the current RevenueCat offering and
-/// always exposes Restore Purchases (App Store review requirement).
+/// Dark, storm-themed paywall for StormScope Pro. Shows every plan in the
+/// current RevenueCat offering (monthly, annual, lifetime) and always exposes
+/// Restore Purchases (App Store review requirement).
 struct PaywallView: View {
     var store: StoreViewModel
     @Environment(\.dismiss) private var dismiss
@@ -91,23 +91,35 @@ struct PaywallView: View {
     /// Headline adapts to where the user is in the trial lifecycle.
     private var heroTitle: String {
         if store.isPremium { return "You own StormScope Pro" }
-        if store.isTrialActive { return "Keep everything. Forever." }
-        return "Everything. Forever. Once."
+        if store.isTrialActive { return "Enjoy 7 days of Premium" }
+        return "Unlock StormScope Pro"
     }
 
     private var heroSubtitle: String {
         if store.isPremium {
-            return "Lifetime unlocked on this device — thanks for supporting StormScope."
+            return "Pro is active on this device — thanks for supporting StormScope."
         }
         if store.isTrialActive {
             let days = store.trialDaysRemaining
             let suffix = days == 1 ? "day" : "days"
-            return "Your full-access trial ends in \(days) \(suffix). Lock it in with one payment — no subscription, no renewals."
+            return "Explore the full feature set free for \(days) more \(suffix). Pick a plan anytime to keep everything."
         }
-        return "One purchase unlocks StormScope Pro on this device for life — no subscription, no renewals."
+        return "Monthly, yearly, or a single lifetime payment — every plan unlocks all Pro features on this device."
     }
 
     // MARK: - Value list
+
+    /// Upfront transparency: during the trial we say exactly what locks when
+    /// it ends, instead of surprising the user on day 8.
+    private var gatedList: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(store.isTrialActive ? "When your free trial ends, these lock:" : "StormScope Pro unlocks:")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(store.isTrialActive ? Theme.amber : Theme.textSecondary)
+                .padding(.horizontal, 4)
+            valueList
+        }
+    }
 
     private var valueList: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -160,56 +172,112 @@ struct PaywallView: View {
     // MARK: - Packages
 
     private func packagesSection(_ offering: Offering) -> some View {
-        VStack(spacing: 16) {
-            valueList
-            ForEach(offering.availablePackages, id: \.identifier) { package in
-                purchaseButton(package)
+        let plans = sortedPlans(offering)
+        return VStack(spacing: 16) {
+            gatedList
+            ForEach(Array(plans.enumerated()), id: \.element.identifier) { index, package in
+                planButton(package, isPrimary: index == 0)
             }
             freeForeverNote
         }
     }
 
-    private func purchaseButton(_ package: Package) -> some View {
+    /// Annual first (best value), then lifetime, then monthly.
+    private func sortedPlans(_ offering: Offering) -> [Package] {
+        offering.availablePackages.sorted { planRank($0) < planRank($1) }
+    }
+
+    private func planRank(_ package: Package) -> Int {
+        let id = package.identifier.lowercased()
+        if id.contains("annual") || id.contains("yearly") { return 0 }
+        if id.contains("lifetime") || id.contains("forever") { return 1 }
+        return 2
+    }
+
+    private func planSubtitle(_ package: Package) -> String {
+        let id = package.identifier.lowercased()
+        if id.contains("annual") || id.contains("yearly") {
+            return "Billed yearly · Save 44% vs monthly"
+        }
+        if id.contains("monthly") { return "Billed monthly · Cancel anytime" }
+        if id.contains("lifetime") || id.contains("forever") {
+            return "One-time payment · Never renews"
+        }
+        return ""
+    }
+
+    private func planButton(_ package: Package, isPrimary: Bool) -> some View {
         Button {
             Task { await store.purchase(package: package) }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(package.storeProduct.localizedTitle)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                    Text("One-time payment · Lifetime · No subscription")
-                        .font(.system(size: 11))
-                        .opacity(0.85)
+                    HStack(spacing: 6) {
+                        Text(package.storeProduct.localizedTitle)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                        if isPrimary { bestValueBadge }
+                    }
+                    if !planSubtitle(package).isEmpty {
+                        Text(planSubtitle(package))
+                            .font(.system(size: 11))
+                            .opacity(0.85)
+                    }
                 }
                 Spacer()
                 if store.isPurchasing {
                     ProgressView()
-                        .tint(Theme.inkDeep)
+                        .tint(isPrimary ? Theme.inkDeep : Theme.cyan)
                 } else {
                     Text(package.storeProduct.localizedPriceString)
                         .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .monospacedDigit()
                 }
             }
-            .foregroundStyle(Theme.inkDeep)
+            .foregroundStyle(isPrimary ? Theme.inkDeep : Theme.textPrimary)
             .padding(.horizontal, 18)
             .padding(.vertical, 15)
             .background(
-                LinearGradient(
-                    colors: [Theme.cyan, Theme.cyan.opacity(0.75)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
+                Group {
+                    if isPrimary {
+                        LinearGradient(
+                            colors: [Theme.cyan, Theme.cyan.opacity(0.75)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    } else {
+                        Color.clear
+                    }
+                }
             )
             .clipShape(.rect(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isPrimary ? Color.clear : Theme.cyan.opacity(0.4), lineWidth: 1)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Theme.panel)
+                    .opacity(isPrimary ? 0 : 1)
+            )
         }
         .disabled(store.isPurchasing)
-        .accessibilityHint("Unlocks all StormScope Pro features permanently")
+        .accessibilityHint("Unlocks all StormScope Pro features")
+    }
+
+    private var bestValueBadge: some View {
+        Text("BEST VALUE")
+            .font(.system(size: 9, weight: .heavy, design: .rounded))
+            .kerning(0.5)
+            .foregroundStyle(Theme.inkDeep)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Theme.inkDeep.opacity(0.15))
+            .clipShape(Capsule())
     }
 
     private var unavailableSection: some View {
         VStack(spacing: 12) {
-            valueList
+            gatedList
             Text(store.errorMessage ?? "The purchase store couldn't be reached. Check your connection and try again.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.textTertiary)
@@ -244,7 +312,7 @@ struct PaywallView: View {
     }
 
     private var legalFootnote: some View {
-        Text("Payment is charged to your Apple ID at confirmation. StormScope Pro is a one-time purchase — it never expires or renews. Manage purchases in your App Store account settings.")
+        Text("Payment is charged to your Apple ID at confirmation. Subscriptions renew automatically until cancelled in your App Store account settings; the lifetime plan is a one-time charge that never renews.")
             .font(.system(size: 10))
             .foregroundStyle(Theme.textTertiary.opacity(0.8))
             .multilineTextAlignment(.center)

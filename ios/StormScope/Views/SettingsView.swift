@@ -131,7 +131,7 @@ struct SettingsView: View {
         Section {
             if store.isPremium {
                 LabeledContent {
-                    Text("Lifetime")
+                    Text("Active")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.green)
                 } label: {
@@ -156,7 +156,7 @@ struct SettingsView: View {
                 Button {
                     isShowingPaywall = true
                 } label: {
-                    Label("Unlock Pro — One-Time Purchase", systemImage: "lock.open.fill")
+                    Label("Unlock StormScope Pro", systemImage: "lock.open.fill")
                 }
                 .listRowBackground(Theme.panel)
             }
@@ -170,7 +170,7 @@ struct SettingsView: View {
         } header: {
             Text("StormScope Pro")
         } footer: {
-            Text("Pro unlocks Live Feedback, radar & SPC outlook imagery, and data exports with a single one-time payment. Storm monitoring, NWS alerts, and lightning detection stay free forever.")
+            Text("Pro unlocks Live Feedback, radar & SPC outlook imagery, and data exports with monthly, annual, or one-time lifetime plans. Storm monitoring, NWS alerts, and lightning detection stay free forever.")
         }
         .tint(Theme.cyan)
     }

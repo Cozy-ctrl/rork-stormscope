@@ -73,7 +73,7 @@ struct PremiumTeaserCard: View {
     }
 }
 
-/// Slim dashboard banner for the 3-day full-access trial: a countdown while
+/// Slim dashboard banner for the 7-day full-access trial: a countdown while
 /// the trial runs, and a locked-state prompt once it ends. Hidden entirely
 /// once Pro is owned.
 struct TrialBannerView: View {
@@ -120,9 +120,9 @@ struct TrialBannerView: View {
 
     private var subtitle: String {
         if store.isTrialActive {
-            return "Everything is unlocked. Keep it forever with a one-time purchase."
+            return "Enjoy the full feature set free — AI, radar & exports lock after."
         }
-        return "Core storm monitoring stays free. Unlock AI, radar & exports once."
+        return "Core storm monitoring stays free. Plans from monthly to lifetime."
     }
 }
 
