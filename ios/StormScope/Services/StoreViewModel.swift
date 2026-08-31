@@ -2,11 +2,40 @@ import Foundation
 import Observation
 import RevenueCat
 
+/// Pure gating math for StormScope Pro, separated from the RevenueCat SDK so
+/// unit tests can exercise trial countdowns and unlock decisions without
+/// constructing `StoreViewModel` (which configures the SDK).
+struct ProAccess {
+    /// Full-access trial length: 3 days from first launch on this device.
+    static let trialDuration: TimeInterval = 3 * 24 * 3600
+
+    let isPremium: Bool
+    let trialEndDate: Date
+    let now: Date
+
+    var isTrialActive: Bool { now < trialEndDate }
+
+    /// Whole days of full access remaining (0 once expired).
+    var trialDaysRemaining: Int {
+        let remaining = trialEndDate.timeIntervalSince(now)
+        guard remaining > 0 else { return 0 }
+        return Int(ceil(remaining / (24 * 3600)))
+    }
+
+    /// Master gate for heavy features: paid OR still inside the trial.
+    var isUnlocked: Bool { isPremium || isTrialActive }
+
+    /// Trial end for a device whose first launch was `startDate`.
+    static func trialEnd(from startDate: Date) -> Date {
+        startDate.addingTimeInterval(trialDuration)
+    }
+}
+
 /// Central monetization state: the RevenueCat "premium" entitlement plus the
 /// per-device full-access trial. Shared as a single instance from `ContentView`.
 ///
 /// Gating model:
-/// - Every feature is free for the first `trialDuration` (3 days per device).
+/// - Every feature is free for the first 3 days per device.
 /// - After that, heavy features (AI Insight, radar/SPC outlook imagery, data
 ///   exports & report sharing) require the one-time "premium" entitlement.
 /// - Life-safety basics never lock and never consult this object.
@@ -14,8 +43,6 @@ import RevenueCat
 @MainActor
 final class StoreViewModel {
     static let entitlementID = "premium"
-    /// Full-access trial length: 3 days from first launch on this device.
-    static let trialDuration: TimeInterval = 3 * 24 * 3600
     private static let trialStartKey = "stormscope.trial.startDate"
 
     /// True when the one-time lifetime purchase is active.
@@ -32,10 +59,10 @@ final class StoreViewModel {
     init() {
         let now = Date()
         if let stored = UserDefaults.standard.object(forKey: Self.trialStartKey) as? Date {
-            trialEndDate = stored.addingTimeInterval(Self.trialDuration)
+            trialEndDate = ProAccess.trialEnd(from: stored)
         } else {
             UserDefaults.standard.set(now, forKey: Self.trialStartKey)
-            trialEndDate = now.addingTimeInterval(Self.trialDuration)
+            trialEndDate = ProAccess.trialEnd(from: now)
         }
 
         Task {
@@ -47,22 +74,18 @@ final class StoreViewModel {
 
     // MARK: - Derived state
 
-    /// Whether the 3-day full-access trial is still running.
-    var isTrialActive: Bool {
-        Date() < trialEndDate
+    private var access: ProAccess {
+        ProAccess(isPremium: isPremium, trialEndDate: trialEndDate, now: Date())
     }
+
+    /// Whether the 3-day full-access trial is still running.
+    var isTrialActive: Bool { access.isTrialActive }
 
     /// Whole days of full access remaining (0 once expired).
-    var trialDaysRemaining: Int {
-        let remaining = trialEndDate.timeIntervalSinceNow
-        guard remaining > 0 else { return 0 }
-        return Int(ceil(remaining / (24 * 3600)))
-    }
+    var trialDaysRemaining: Int { access.trialDaysRemaining }
 
     /// Master gate for heavy features: paid OR still inside the trial.
-    var isUnlocked: Bool {
-        isPremium || isTrialActive
-    }
+    var isUnlocked: Bool { access.isUnlocked }
 
     /// Human-readable price of the lifetime package, when the offering loaded.
     var lifetimePrice: String? {

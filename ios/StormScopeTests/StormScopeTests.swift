@@ -300,4 +300,74 @@ struct StormScopeTests {
         #expect(decoded.alertCount == 2)
         #expect(decoded.levelRaw == 4)
     }
+
+    // MARK: - ProAccess: trial countdown & gating
+
+    /// Fresh first launch: trial runs the full 3 days and unlocks everything.
+    @Test func freshTrialIsActiveWithThreeDaysRemaining() {
+        let access = ProAccess(
+            isPremium: false,
+            trialEndDate: ProAccess.trialEnd(from: now),
+            now: now
+        )
+        #expect(access.isTrialActive)
+        #expect(access.trialDaysRemaining == 3)
+        #expect(access.isUnlocked)
+    }
+
+    /// Partial days round up so the banner never understates access.
+    @Test func trialDaysRoundUpToWholeDays() {
+        let twoAndAHalf = ProAccess(
+            isPremium: false,
+            trialEndDate: now.addingTimeInterval(2.5 * 24 * 3600),
+            now: now
+        )
+        #expect(twoAndAHalf.trialDaysRemaining == 3)
+
+        let exactlyTwo = ProAccess(
+            isPremium: false,
+            trialEndDate: now.addingTimeInterval(2 * 24 * 3600),
+            now: now
+        )
+        #expect(exactlyTwo.trialDaysRemaining == 2)
+    }
+
+    /// One second past the deadline the trial locks and the gate closes.
+    @Test func expiredTrialLocksAllGatedFeatures() {
+        let access = ProAccess(
+            isPremium: false,
+            trialEndDate: now.addingTimeInterval(-1),
+            now: now
+        )
+        #expect(!access.isTrialActive)
+        #expect(!access.isUnlocked)
+        #expect(access.trialDaysRemaining == 0)
+    }
+
+    /// The lifetime purchase overrides an expired trial permanently.
+    @Test func premiumOverridesExpiredTrial() {
+        let access = ProAccess(
+            isPremium: true,
+            trialEndDate: now.addingTimeInterval(-1),
+            now: now
+        )
+        #expect(!access.isTrialActive)
+        #expect(access.isUnlocked)
+    }
+
+    /// Trial deadline lands exactly on start + 3 days.
+    @Test func trialEndIsExactlyThreeDaysFromStart() {
+        #expect(ProAccess.trialEnd(from: now).timeIntervalSince(now) == ProAccess.trialDuration)
+    }
+
+    /// Boundary: at the exact trial deadline the gate is closed (strict `<`).
+    @Test func trialIsClosedAtExactDeadline() {
+        let access = ProAccess(
+            isPremium: false,
+            trialEndDate: now,
+            now: now
+        )
+        #expect(!access.isTrialActive)
+        #expect(!access.isUnlocked)
+    }
 }

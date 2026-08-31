@@ -75,17 +75,36 @@ struct PaywallView: View {
             }
             .accessibilityHidden(true)
 
-            Text("Everything. Forever. Once.")
+            Text(heroTitle)
                 .font(.system(size: 24, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
 
-            Text("One purchase unlocks StormScope Pro on this device for life — no subscription, no renewals.")
+            Text(heroSubtitle)
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Headline adapts to where the user is in the trial lifecycle.
+    private var heroTitle: String {
+        if store.isPremium { return "You own StormScope Pro" }
+        if store.isTrialActive { return "Keep everything. Forever." }
+        return "Everything. Forever. Once."
+    }
+
+    private var heroSubtitle: String {
+        if store.isPremium {
+            return "Lifetime unlocked on this device — thanks for supporting StormScope."
+        }
+        if store.isTrialActive {
+            let days = store.trialDaysRemaining
+            let suffix = days == 1 ? "day" : "days"
+            return "Your full-access trial ends in \(days) \(suffix). Lock it in with one payment — no subscription, no renewals."
+        }
+        return "One purchase unlocks StormScope Pro on this device for life — no subscription, no renewals."
     }
 
     // MARK: - Value list
@@ -158,7 +177,7 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(package.storeProduct.localizedTitle)
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                    Text("Pay once. Never again.")
+                    Text("One-time payment · Lifetime · No subscription")
                         .font(.system(size: 11))
                         .opacity(0.85)
                 }
