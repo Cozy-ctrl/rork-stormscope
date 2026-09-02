@@ -370,4 +370,18 @@ struct StormScopeTests {
         #expect(!access.isTrialActive)
         #expect(!access.isUnlocked)
     }
+
+    // MARK: - Legal links
+
+    /// In-app Privacy, Terms, Support, and Contact must open the COPYCRAWLER hub.
+    @Test func legalLinksPointAtCopycrawlerHub() {
+        #expect(LegalLinks.privacy.absoluteString == "https://copycrawler-hub.lovable.app/privacy")
+        #expect(LegalLinks.terms.absoluteString == "https://copycrawler-hub.lovable.app/terms")
+        #expect(LegalLinks.support.absoluteString == "https://copycrawler-hub.lovable.app/support")
+        #expect(LegalLinks.contact.absoluteString == "https://copycrawler-hub.lovable.app/contact")
+        #expect(LegalLinks.privacy.scheme == "https")
+        #expect(LegalLinks.terms.scheme == "https")
+        #expect(LegalLinks.support.scheme == "https")
+        #expect(LegalLinks.contact.scheme == "https")
+    }
 }
