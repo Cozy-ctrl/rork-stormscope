@@ -482,19 +482,24 @@ struct SettingsView: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Privacy Policy", systemImage: "hand.raised.fill")
+                    Label("On-Device Privacy", systemImage: "lock.shield.fill")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(Theme.textPrimary)
-                    Text("StormScope does not collect, store, or transmit any personal data. All sensor readings, location data, and AI analysis stay on your device. See the Privacy Nutrition Label above for details required by Apple.")
+                    Text("StormScope does not collect, store, or transmit any personal data. All sensor readings, location data, and AI analysis stay on your device. See the Privacy Nutrition Label in the App Store listing for details required by Apple.")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .listRowBackground(Theme.panel)
+
+                legalLink("Privacy Policy", systemImage: "hand.raised.fill", url: LegalLinks.privacy)
+                legalLink("Terms of Use", systemImage: "doc.text.fill", url: LegalLinks.terms)
+                legalLink("Support", systemImage: "questionmark.circle.fill", url: LegalLinks.support)
+                legalLink("Contact", systemImage: "envelope.fill", url: LegalLinks.contact)
             } header: {
                 Text("Privacy & Legal")
             } footer: {
-                Text("Full privacy policy and terms of service are linked in the App Store listing.")
+                Text("Privacy Policy, Terms of Use, Support, and Contact open in Safari.")
             }
         }
     }
@@ -654,6 +659,23 @@ struct SettingsView: View {
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         return version ?? "1.0"
+    }
+
+    /// External hub page; SwiftUI `Link` opens it in Safari.
+    private func legalLink(_ title: String, systemImage: String, url: URL) -> some View {
+        Link(destination: url) {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .foregroundStyle(Theme.textPrimary)
+        .listRowBackground(Theme.panel)
+        .accessibilityHint("Opens in Safari")
     }
 }
 

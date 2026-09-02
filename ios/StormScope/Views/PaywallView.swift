@@ -312,12 +312,25 @@ struct PaywallView: View {
     }
 
     private var legalFootnote: some View {
-        Text("Payment is charged to your Apple ID at confirmation. Subscriptions renew automatically until cancelled in your App Store account settings; the lifetime plan is a one-time charge that never renews.")
-            .font(.system(size: 10))
-            .foregroundStyle(Theme.textTertiary.opacity(0.8))
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 8)
+        VStack(spacing: 10) {
+            Text("Payment is charged to your Apple ID at confirmation. Subscriptions renew automatically until cancelled in your App Store account settings; the lifetime plan is a one-time charge that never renews.")
+                .font(.system(size: 10))
+                .foregroundStyle(Theme.textTertiary.opacity(0.8))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8)
+
+            HStack(spacing: 16) {
+                Link("Terms of Use", destination: LegalLinks.terms)
+                Text("·")
+                    .foregroundStyle(Theme.textTertiary)
+                    .accessibilityHidden(true)
+                Link("Privacy Policy", destination: LegalLinks.privacy)
+            }
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .tint(Theme.cyan)
+            .accessibilityElement(children: .contain)
+        }
     }
 }
 

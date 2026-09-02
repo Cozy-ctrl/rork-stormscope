@@ -745,7 +745,7 @@ struct InfoSheetView: View {
                 bullet("Alerts & Monitoring — storm and tornado notification toggles; background monitoring; Lock Screen Live Activity; lightning detection on/off.")
                 bullet("Sensor Calibration — one-tap alignment to the nearest NWS station; shows active offset and station ID; clear calibration to revert to factory sensor.")
                 bullet("Data — shows how many pressure readings are stored; delete all data with confirmation (permanent, cannot be undone).")
-                bullet("About — app version; data source acknowledgements (api.weather.gov, spc.noaa.gov, Open-Meteo); device-capability checklist; links to privacy policy and terms.")
+                bullet("About — app version; data source acknowledgements (api.weather.gov, spc.noaa.gov, Open-Meteo); device-capability checklist; Safari links to Privacy Policy, Terms of Use, Support, and Contact.")
             }
 
             Text("All settings persist across app restarts and are stored only on this device. Nothing is synced or uploaded.")
